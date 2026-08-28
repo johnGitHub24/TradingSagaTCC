@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradingSagaTCC — L1 UI Smoke</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body { background: #0f1419; color: #e6edf3; }
+    .card { background: #1a2332; border-color: #2d3a4f; }
+    .muted { color: #8b9cb3; }
+    .pass { color: #10b981; }
+    .fail { color: #f87171; }
+    pre { background: #0f1419; color: #c9d4e3; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+<div id="smoke-app" class="container py-4" data-testid="smoke-status" data-value="idle" data-failures="0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h4 mb-1">L1 UI Smoke Runner</h1>
+      <p class="muted mb-0">真開埠後跑 SAGA-001／002、TCC-002、TRADE-001</p>
+    </div>
+    <a href="/" class="btn btn-sm btn-outline-secondary">回主畫面</a>
+  </div>
+
+  <button type="button" id="run-btn" class="btn btn-lg w-100 mb-4 btn-run btn-primary"
+          data-testid="run-l1-smoke">RUN TESTING</button>
+
+  <div id="results" class="row g-3"></div>
+</div>
+<script type="module" src="/test/suite.js"></script>
+</body>
+</html>

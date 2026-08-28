@@ -1,0 +1,77 @@
+server:
+  port: 8093
+
+spring:
+  application:
+    name: trading-saga-tcc
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  kafka:
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.trading.saga.messaging.SagaMessage
+
+trading:
+  kafka:
+    embedded: true
+    command-topic: trading.saga.commands
+    event-topic: trading.saga.events
+  outbox:
+    poll-ms: 200
+  datasource:
+    order:
+      url: jdbc:h2:mem:orderdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+      username: sa
+      password: ""
+      driver-class-name: org.h2.Driver
+    account:
+      url: jdbc:h2:mem:accountdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
+      username: sa
+      password: ""
+      driver-class-name: org.h2.Driver
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    db:
+      enabled: false
+
+startup:
+  info:
+    enabled: true
+    project-name: TradingSagaTCC
+    frontend: static
+    auth: false
+    h2: true
+    api-docs: true
+    probe: true
+    home-path: /
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    org.apache.kafka: WARN
+    kafka: WARN
+    org.apache.zookeeper: WARN
+    org.springframework.kafka: INFO

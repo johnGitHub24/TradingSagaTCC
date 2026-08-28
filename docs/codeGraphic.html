@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradingSagaTCC — CodeGraphic</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419; --surface: #1a2332; --surface2: #243044; --border: #2d3a4f;
+      --text: #e6edf3; --muted: #8b9cb3; --accent: #3b82f6; --accent2: #10b981; --warn: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; min-height: 100vh; }
+    .top { border-bottom: 1px solid var(--border); background: linear-gradient(135deg, #1e3a5f 0%, #0f1419 70%); padding: 1.5rem 2rem 0; }
+    .top h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .top .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .top .links { margin-bottom: 1rem; font-size: 0.85rem; }
+    .top .links a { color: var(--accent); text-decoration: none; margin-right: 1rem; }
+    .top .links a:hover { text-decoration: underline; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .tab { appearance: none; border: 1px solid var(--border); background: var(--surface); color: var(--muted); padding: 0.55rem 1.1rem; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 0.9rem; border-bottom: none; }
+    .tab:hover { color: var(--text); background: var(--surface2); }
+    .tab.active { background: var(--bg); color: var(--accent2); border-color: var(--accent); box-shadow: inset 0 2px 0 var(--accent); }
+    main { padding: 1.5rem 2rem 3rem; max-width: 1100px; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .panel h2 { font-size: 1.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.4rem; margin-bottom: 0.75rem; }
+    .blurb { color: #c9d4e3; font-size: 0.92rem; margin-bottom: 1rem; max-width: 52rem; }
+    .blurb li { margin-left: 1.1rem; margin-bottom: 0.25rem; }
+    .mermaid { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; }
+    .note { margin-top: 1rem; background: var(--surface2); border-left: 3px solid var(--warn); padding: 0.65rem 0.9rem; font-size: 0.85rem; color: var(--muted); }
+    footer { padding: 0 2rem 2rem; color: var(--muted); font-size: 0.8rem; }
+    @media (max-width: 700px) {
+      .top, main, footer { padding-left: 1rem; padding-right: 1rem; }
+      .tab { flex: 1 1 auto; border-radius: 8px; border-bottom: 1px solid var(--border); }
+      .tabs { gap: 0.5rem; padding-bottom: 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1>TradingSagaTCC — CodeGraphic</h1>
+    <p class="sub">雙庫邊界 · Kafka Outbox · Saga／TCC／補償（非權威）</p>
+    <p class="links">
+      <a href="../README.html">README</a>
+      <a href="../TradingSagaTCC 規格書.html">規格書（權威）</a>
+      <a href="architecture.html">architecture</a>
+    </p>
+    <nav class="tabs" role="tablist" aria-label="CodeGraphic 章節">
+      <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="boundary">雙庫邊界</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="saga">Saga 流程</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="tcc">TCC／補償</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="packages">套件地圖</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="panel-boundary" class="panel active" role="tabpanel">
+      <h2>雙庫邊界</h2>
+      <ul class="blurb">
+        <li>訂單庫只寫 order／saga／outbox；帳戶庫只寫 accounts／tcc_reservations。</li>
+        <li>Kafka 是唯一跨庫寫入橋；禁止 XA。</li>
+        <li>擴增獨立 consumer／relay 時這條邊界不變。</li>
+      </ul>
+      <div class="mermaid">
+flowchart LR
+  UI["Vue :8093"] --> API["TradeController"]
+  API --> ODB["orderdb"]
+  ODB --> OX["outbox_events"]
+  OX --> K["Kafka"]
+  K --> ADB["accountdb TCC"]
+  ADB --> K
+  K --> ODB
+      </div>
+      <p class="note">啟動前可讀帳戶是否存在；不得在同一 JDBC 交易寫兩庫。</p>
+    </section>
+
+    <section id="panel-saga" class="panel" role="tabpanel" hidden>
+      <h2>Saga 流程</h2>
+      <ul class="blurb">
+        <li>HTTP 202：訂單 PENDING + Outbox RESERVE_FUNDS。</li>
+        <li>帳戶 Try 成功後編排再發 CONFIRM_FUNDS。</li>
+        <li>FUNDS_CONFIRMED → 訂單 FILLED／Saga COMPLETED。</li>
+      </ul>
+      <div class="mermaid">
+sequenceDiagram
+  participant C as Client
+  participant O as Order DB
+  participant K as Kafka
+  participant A as Account TCC
+  C->>O: POST trades
+  O->>K: RESERVE_FUNDS
+  K->>A: Try
+  A->>K: FUNDS_RESERVED
+  K->>O: CONFIRM commanded
+  O->>K: CONFIRM_FUNDS
+  K->>A: Confirm
+  A->>K: FUNDS_CONFIRMED
+  K->>O: FILLED
+      </div>
+      <p class="note">編排狀態在訂單庫；帳戶不寫 saga_instances。</p>
+    </section>
+
+    <section id="panel-tcc" class="panel" role="tabpanel" hidden>
+      <h2>TCC／補償</h2>
+      <ul class="blurb">
+        <li>Try：available → frozen。</li>
+        <li>Confirm：吃掉 frozen；Cancel：frozen 還回 available。</li>
+        <li>forceFail 或餘額不足：帳戶 Cancel／不扣款，訂單補償 FAILED。</li>
+      </ul>
+      <div class="mermaid">
+stateDiagram-v2
+  [*] --> TRYING: Try
+  TRYING --> CONFIRMED: Confirm
+  TRYING --> CANCELLED: Cancel
+  CONFIRMED --> [*]
+  CANCELLED --> [*]
+      </div>
+      <p class="note">TCC 管單資源兩階段；Saga 管跨資源順序與補償。</p>
+    </section>
+
+    <section id="panel-packages" class="panel" role="tabpanel" hidden>
+      <h2>套件地圖</h2>
+      <ul class="blurb">
+        <li>order／account 各有 domain + infrastructure。</li>
+        <li>saga 編排與補償；messaging 接 Kafka。</li>
+        <li>expansion 四介面預留給拆進程。</li>
+      </ul>
+      <div class="mermaid">
+flowchart TB
+  subgraph api [HTTP]
+    TC[TradeController]
+    AC[AccountController]
+  end
+  subgraph app [Service]
+    SO[SagaOrchestrator]
+    TCC[AccountTccService]
+    CP[OrderMarkFailedAction]
+  end
+  subgraph exp [expansion]
+    TR[TccResource]
+    CA[CompensationAction]
+    OR[OutboxRelay]
+    DC[DomainEventConsumer]
+  end
+  TC --> SO
+  SO --> OR
+  AC --> TCC
+  TCC --> TR
+  CP --> CA
+  DC --> TCC
+      </div>
+      <p class="note">新增庫存參與者：實作 TccResource，不要把庫存表塞進訂單庫。</p>
+    </section>
+  </main>
+
+  <footer>CodeGraphic · 非權威 · 衝突以規格書為準 · Mermaid CDN · eos-minimal</footer>
+
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
+    const tabs = document.querySelectorAll(".tab");
+    const panels = {
+      "boundary": document.getElementById("panel-boundary"),
+      "saga": document.getElementById("panel-saga"),
+      "tcc": document.getElementById("panel-tcc"),
+      "packages": document.getElementById("panel-packages")
+    };
+    const firstId = "boundary";
+    const rendered = new Set([firstId]);
+    async function renderPanel(id) {
+      if (rendered.has(id)) return;
+      await mermaid.run({ nodes: panels[id].querySelectorAll(".mermaid") });
+      rendered.add(id);
+    }
+    mermaid.run({ nodes: panels[firstId].querySelectorAll(".mermaid") });
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", async () => {
+        const id = tab.dataset.tab;
+        tabs.forEach((t) => {
+          t.classList.toggle("active", t === tab);
+          t.setAttribute("aria-selected", t === tab ? "true" : "false");
+        });
+        Object.entries(panels).forEach(([key, panel]) => {
+          const on = key === id;
+          panel.classList.toggle("active", on);
+          panel.hidden = !on;
+        });
+        await renderPanel(id);
+      });
+    });
+  </script>
+</body>
+</html>

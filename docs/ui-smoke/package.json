@@ -1,0 +1,8 @@
+{
+  "name": "trading-saga-tcc-ui-smoke",
+  "private": true,
+  "description": "Local puppeteer for docs/run-ui-smoke.ps1 (optional; avoids npx on every run)",
+  "dependencies": {
+    "puppeteer": "24.42.0"
+  }
+}
