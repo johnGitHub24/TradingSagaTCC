@@ -20,3 +20,6 @@ dist/
 Thumbs.db
 data/
 
+
+# eos-minimal onboard
+.env
