@@ -40,8 +40,8 @@
 | `docs/run-smoke-l1.ps1` | L1 編排 | 可選 | API 綠 + `UI automation=PASS\|N/A` |
 | `docs/run-release-gate.ps1` | Release 閘 | 可選 | `check` 綠 + `ALL_RELEASE_GATE_OK`（含 L1） |
 
-**Release 建議：** `bootRun` → `.\docs\run-release-gate.ps1`（Pure check + L1；無 Node：`-SkipUi`）。  
-**Graph 路由：** `docs/graph-routing.md`（單 Agent 報告 `EOS-GRAPH=N/A`）。
+**Release 建議：** `bootRun` → `.\docs\run-release-gate.ps1`（`-SkipSmoke` 僅 check；`-SkipUi` 僅 API L1）。  
+**Graph 路由：** `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`）。
 
 **L1 劇情（API／UI 共用）：** SAGA-001／002、TCC-002、TRADE-001。人看：`http://localhost:8093/test/runner.html`。
 
