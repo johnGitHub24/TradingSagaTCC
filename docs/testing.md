@@ -57,4 +57,5 @@ UI automation: PASS
 時間: <本地完成時刻>
 ```
 
-公版範本來源：`EngineeringOS/eos-minimal/templates/docs/demo-ready/`（本專案為金樣實作）。
+公版範本來源：`EngineeringOS/eos-minimal/templates/docs/demo-ready/`。  
+**名詞（金樣、兩入口+一編排等）：** EOS `knowledge/testing.md` 名詞小辭典。本專案為 Demo-ready **金樣**實作。

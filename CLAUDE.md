@@ -14,7 +14,7 @@
 - 驗證入口：`.\scripts\check.ps1`（`gradlew check`＝unit + integration）
 - 本機 Demo：IntelliJ／Gradle `bootRun`（**勿**對 `*Application` 綠箭頭）→ http://localhost:8093/
 - **Demo-ready：** 權威 `docs/testing.md`＋公版 `testing.md`；L1 編排 `docs/run-smoke-l1.ps1`；Release `docs/run-release-gate.ps1`
-- **Graph：** 最小路由 `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`）
+- **Graph：** 最小路由 `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`；名詞見 EOS `testing.md` 名詞小辭典）
 - Docs standard：`knowledge/documentation.md`
 - 無 Security → 無 `docs/驗證設計.md`
 
