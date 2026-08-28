@@ -14,6 +14,7 @@
 | [docs/codeGraphic.html](docs/codeGraphic.html) | Tab 式架構圖（非權威） |
 | [docs/swagger.html](docs/swagger.html) | API（Swagger UI） |
 | [docs/testing.md](docs/testing.md) | Case／check／DoD／**Runtime Smoke L0～L1** |
+| [docs/graph-routing.md](docs/graph-routing.md) | **最小 Graph**（單 Agent N/A；Release 編排） |
 | [docs/資料庫設計.md](docs/資料庫設計.md) | 雙庫表 |
 | [CLAUDE.md](CLAUDE.md) | AI／工程薄規則（繼承 EOS） |
 | [scripts/README.md](scripts/README.md) | Pure 驗證腳本 |
