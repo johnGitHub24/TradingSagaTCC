@@ -8,9 +8,12 @@ const argUrl = process.argv.find((a) => a.startsWith('--baseUrl='))?.split('=')[
 const baseUrl = (argUrl || process.env.SMOKE_BASE_URL || 'http://localhost:8093').replace(/\/$/, '');
 const timeoutMs = Number(process.env.SMOKE_TIMEOUT_MS || '120000');
 
+const headed = process.argv.includes('--headed') || process.env.SMOKE_HEADED === '1' || process.env.SMOKE_HEADED === 'true';
+
 const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    headless: !headed,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    slowMo: headed ? 80 : 0
 });
 
 try {

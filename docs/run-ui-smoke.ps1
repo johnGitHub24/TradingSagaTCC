@@ -3,10 +3,12 @@
 #   .\docs\run-ui-smoke.ps1              # assumes bootRun on :8093
 #   .\docs\run-ui-smoke.ps1 -StartApp    # start bootRun then test
 #   .\docs\run-ui-smoke.ps1 -InstallDeps # npm install in docs/ui-smoke first
+#   .\docs\run-ui-smoke.ps1 -Headed      # visible browser (新建專案必做)
 param(
     [string]$BaseUrl = 'http://localhost:8093',
     [switch]$StartApp,
     [switch]$InstallDeps,
+    [switch]$Headed,
     [int]$HealthTimeoutSec = 120
 )
 
@@ -86,11 +88,14 @@ try {
 
     $null = Ensure-Puppeteer
 
-    Write-Host 'Health UP - running headless UI smoke...' -ForegroundColor Cyan
+    $headedMsg = if ($Headed) { 'headed (visible browser)' } else { 'headless' }
+    Write-Host "Health UP - running UI smoke ($headedMsg)..." -ForegroundColor Cyan
     $mjs = Join-Path $uiSmokeDir 'run-headless.mjs'
     Push-Location $uiSmokeDir
     try {
-        & node $mjs "--baseUrl=$BaseUrl"
+        $nodeArgs = @($mjs, "--baseUrl=$BaseUrl")
+        if ($Headed) { $nodeArgs += '--headed' }
+        & node @nodeArgs
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     } finally {
         Pop-Location
