@@ -19,9 +19,11 @@
 ```mermaid
 flowchart LR
   P[Plan] --> W[Work: TDD + Case]
-  W --> R1[Review: check.ps1]
-  R1 -->|紅| W
-  R1 --> S[Release: bootRun + Smoke L1]
+  W --> H[Harness: check.ps1]
+  H -->|紅| W
+  H --> CR[CodeReviewer: 唯讀 diff]
+  CR -->|Major>0| W
+  CR --> S[Release: bootRun + Smoke L1]
   S -->|紅| W
   S --> REP[完工報告 + 證據欄]
 ```
@@ -30,18 +32,35 @@ flowchart LR
 |------|------|----------|
 | **Plan** | Scope、Case 是否受影響 | 人工／任務描述核准 |
 | **Work** | 程式 + 成對測試 | 對應 SAGA/TCC/TRADE… Case 有改到 |
-| **Review** | `scripts/check.ps1` | `BUILD SUCCESSFUL` |
+| **Harness** | `scripts/check.ps1` | `BUILD SUCCESSFUL` |
+| **CodeReviewer** | Major/Minor 報告 | Major=0；EOS `prompt/code-reviewer-agent-v1.md` |
 | **Release** | `docs/run-release-gate.ps1` 或分開 `run-smoke-l1.ps1` | `ALL_API_SMOKE_OK`；UI 可選 `PASS`／`N/A` |
 | **匯合** | `docs/work-completion-reports/*.md` | 雙通道：檔案 + 對話面板 |
 
 **編排腳本（不破 Pure）：**
 
 ```powershell
-.\gradlew.bat bootRun              # 終端 1
-.\docs\run-release-gate.ps1        # 終端 2：check + L1（bootRun 須已 UP）
+.\scripts\check.ps1                    # Harness（CodeReviewer 前置）
+# check 綠 → CodeReviewer Task（見 EngineeringOS/eos-minimal/prompt/code-reviewer-agent-v1.md）
+.\gradlew.bat bootRun                  # 終端 1
+.\docs\run-release-gate.ps1            # 終端 2：check + L1（bootRun 須已 UP）
 # 僅 check：.\docs\run-release-gate.ps1 -SkipSmoke
 # 僅 Smoke（check 已綠）：.\docs\run-release-gate.ps1 -SkipCheck
 ```
+
+---
+
+## CodeReviewer 節點（Harness 綠 → 唯讀審查）
+
+> **權威 prompt：** `EngineeringOS/eos-minimal/prompt/code-reviewer-agent-v1.md`  
+> **Loop ID：** `EOS-LOOP-REVIEW`
+
+| 項目 | 規則 |
+|------|------|
+| **進入** | Plan Scope（path/Case）+ diff + **check 已綠** |
+| **行為** | 唯讀；依 `review-checklist.md`；T1～T4 觸發時對照 SAGA-* Case |
+| **退出** | Major=0 → Release；Major≥1 → 回 Work |
+| **單 Agent** | check 綠後 Cursor Task；`EOS-GRAPH`＝**N/A** |
 
 ---
 
@@ -55,7 +74,11 @@ flowchart TB
   P --> B[Agent B: docs/ smoke + static/test]
   A --> M[匯合: 單一工作區]
   B --> M
-  M --> R[Review: check + run-release-gate]
+  M --> H[Harness: check]
+  H --> CR[CodeReviewer]
+  CR --> R[Review: run-release-gate]
+  H -->|紅| P
+  CR -->|Major| P
   R -->|紅| P
 ```
 
@@ -63,7 +86,9 @@ flowchart TB
 |----|------|
 | A → M | 只寫 `src/`、`src/test/`；不動 `docs/run-*-smoke.ps1` |
 | B → M | 只寫 `docs/`、`static/test/`；劇情對齊 Case ID |
-| M → R | **先** `check` **再** Smoke；禁止只跑單元就宣稱 Release 完成 |
+| M → H | 匯合後 **先** `check` |
+| H → CR | check 綠才 CodeReviewer（唯讀） |
+| CR → R | Major=0 才 Smoke／Release |
 | R 紅 → Plan/Work | 契約衝突或並行改同一檔 → 回 Work 序列化 |
 
 ---
@@ -99,7 +124,8 @@ EOS-GRAPH: N/A — 單 Agent；拓樸見 docs/graph-routing.md 預設圖
 ```text
 ❌ 多 Agent 無路由表並行改同一模組
 ❌ 把 Smoke 塞進 scripts/check.ps1（破壞 Pure）
-❌ Review 未 harness 綠就寫 Release 證據欄
+❌ Review 未 harness 綠就 CodeReview 或寫 Release 證據欄
+❌ CodeReviewer 與 Work Agent 並行改同一檔
 ❌ 對話裡決策了 Case 卻沒更新測試／Smoke 劇情
 ```
 
@@ -107,4 +133,5 @@ EOS-GRAPH: N/A — 單 Agent；拓樸見 docs/graph-routing.md 預設圖
 
 - Loop／Gate：`EngineeringOS/eos-minimal/PLAYBOOK.md`
 - Demo-ready：`docs/testing.md`、EOS `demo-ready-guide.md`
+- CodeReviewer prompt：EOS `prompt/code-reviewer-agent-v1.md`
 - 架構圖（非 Graph）：`docs/codeGraphic.html`
