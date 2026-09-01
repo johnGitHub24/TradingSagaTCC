@@ -1,4 +1,4 @@
-. "$PSScriptRoot\env.ps1"
+﻿. "$PSScriptRoot\env.ps1"
 # check.ps1 — unit + integration
 Set-Location (Split-Path $PSScriptRoot -Parent)
 

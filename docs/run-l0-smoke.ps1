@@ -1,4 +1,4 @@
-# run-l0-smoke.ps1 - L0 probe only (health + UI 200)
+﻿# run-l0-smoke.ps1 - L0 probe only (health + UI 200)
 # Usage: .\docs\run-l0-smoke.ps1
 param(
     [string]$BaseUrl = 'http://localhost:8093'

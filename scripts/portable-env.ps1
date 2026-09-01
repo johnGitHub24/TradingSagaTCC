@@ -1,4 +1,4 @@
-# portable-env.ps1 — Honor OS JAVA_HOME only (never embed / never invent JDK paths)
+﻿# portable-env.ps1 — Honor OS JAVA_HOME only (never embed / never invent JDK paths)
 # If the machine already has JAVA_HOME, use it. Projects do not configure JDK location.
 
 param(

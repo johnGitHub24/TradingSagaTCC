@@ -1,4 +1,4 @@
-# run-api-smoke.ps1 - L1 API Runtime Smoke (no Node required)
+﻿# run-api-smoke.ps1 - L1 API Runtime Smoke (no Node required)
 # Usage:
 #   .\docs\run-api-smoke.ps1
 #   .\docs\run-api-smoke.ps1 -BaseUrl http://localhost:8093

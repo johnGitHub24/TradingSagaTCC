@@ -1,4 +1,4 @@
-# run-ui-smoke.ps1 - L1 UI Smoke (headless browser)
+﻿# run-ui-smoke.ps1 - L1 UI Smoke (headless browser)
 # Usage:
 #   .\docs\run-ui-smoke.ps1              # assumes bootRun on :8093
 #   .\docs\run-ui-smoke.ps1 -StartApp    # start bootRun then test

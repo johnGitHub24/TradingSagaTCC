@@ -1,4 +1,4 @@
-# run-release-gate.ps1 - Release gate: Pure check + optional L1 Smoke (docs layer)
+﻿# run-release-gate.ps1 - Release gate: Pure check + optional L1 Smoke (docs layer)
 # Does NOT modify scripts/check.ps1 (Pure boundary).
 # Usage:
 #   .\gradlew.bat bootRun                    # terminal 1

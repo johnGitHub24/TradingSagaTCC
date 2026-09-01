@@ -1,4 +1,4 @@
-# run-smoke-l1.ps1 - L1 orchestrator: API (required) + UI (optional)
+﻿# run-smoke-l1.ps1 - L1 orchestrator: API (required) + UI (optional)
 # Usage:
 #   .\docs\run-smoke-l1.ps1
 #   .\docs\run-smoke-l1.ps1 -SkipUi          # API only; UI automation=N/A
