@@ -23,9 +23,9 @@ flowchart LR
   H -->|紅| W
   H --> CR[CodeReviewer: 唯讀 diff]
   CR -->|Major>0| W
-  CR --> S[Release: bootRun + Smoke L1]
-  S -->|紅| W
-  S --> REP[完工報告 + 證據欄]
+  CR --> RA[Release Agent: run-release-gate]
+  RA -->|紅| W
+  RA --> REP[完工報告 + 證據欄]
 ```
 
 | 節點 | 產物 | 通過條件 |
@@ -34,7 +34,7 @@ flowchart LR
 | **Work** | 程式 + 成對測試 | 對應 SAGA/TCC/TRADE… Case 有改到 |
 | **Harness** | `scripts/check.ps1` | `BUILD SUCCESSFUL` |
 | **CodeReviewer** | Major/Minor 報告 | Major=0；EOS `prompt/code-reviewer-agent-v1.md` |
-| **Release** | `docs/run-release-gate.ps1` 或分開 `run-smoke-l1.ps1` | `ALL_API_SMOKE_OK`；UI 可選 `PASS`／`N/A` |
+| **Release Agent** | `docs/run-release-gate.ps1` | `ALL_RELEASE_GATE_OK`；prompt `release-agent-v1.md` |
 | **匯合** | `docs/work-completion-reports/*.md` | 雙通道：檔案 + 對話面板 |
 
 **編排腳本（不破 Pure）：**
@@ -42,6 +42,7 @@ flowchart LR
 ```powershell
 .\scripts\check.ps1                    # Harness（CodeReviewer 前置）
 # check 綠 → CodeReviewer Task（見 EngineeringOS/eos-minimal/prompt/code-reviewer-agent-v1.md）
+# check 綠 + Major=0 → Release Agent Task（見 prompt/release-agent-v1.md）
 .\gradlew.bat bootRun                  # 終端 1
 .\docs\run-release-gate.ps1            # 終端 2：check + L1（bootRun 須已 UP）
 # 僅 check：.\docs\run-release-gate.ps1 -SkipSmoke
@@ -59,8 +60,45 @@ flowchart LR
 |------|------|
 | **進入** | Plan Scope（path/Case）+ diff + **check 已綠** |
 | **行為** | 唯讀；依 `review-checklist.md`；T1～T4 觸發時對照 SAGA-* Case |
-| **退出** | Major=0 → Release；Major≥1 → 回 Work |
+| **退出** | Major=0 → Release Agent；Major≥1 → 回 Work |
 | **單 Agent** | check 綠後 Cursor Task；`EOS-GRAPH`＝**N/A** |
+
+**Cursor Task 範例：**
+
+```text
+Full Repository Path: d:\SouceDemo\RemoteSpringBoot\TradingSagaTCC
+Diff: uncommitted changes
+Plan Scope: src/.../saga/；Case SAGA-001、TCC-002
+Check evidence: .\scripts\check.ps1 → BUILD SUCCESSFUL
+
+依 EngineeringOS eos-minimal/prompt/code-reviewer-agent-v1.md 執行 CodeReviewer。
+```
+
+---
+
+## Release Agent 節點（腳本 + 證據欄 · 不改 code）
+
+> **權威 prompt：** `EngineeringOS/eos-minimal/prompt/release-agent-v1.md`  
+> **Loop ID：** `EOS-LOOP-RELEASE`
+
+| 項目 | 規則 |
+|------|------|
+| **進入** | CodeReviewer Major=0；L1 時 **bootRun :8093 UP** |
+| **行為** | 跑 `run-release-gate.ps1`；可選 `verify-runner-served.ps1` |
+| **可寫** | 僅 `docs/work-completion-reports/` |
+| **退出** | `ALL_RELEASE_GATE_OK` + 證據欄雙通道 |
+
+**Cursor Task 範例：**
+
+```text
+Full Repository Path: d:\SouceDemo\RemoteSpringBoot\TradingSagaTCC
+HTTP port: 8093
+Review status: PASS
+bootRun: UP
+
+依 EngineeringOS eos-minimal/prompt/release-agent-v1.md 執行 Release Agent。
+跑 .\docs\run-release-gate.ps1 -SkipCheck；填 EOS-LOOP-RELEASE 證據欄；禁止改 src/。
+```
 
 ---
 
@@ -76,10 +114,11 @@ flowchart TB
   B --> M
   M --> H[Harness: check]
   H --> CR[CodeReviewer]
-  CR --> R[Review: run-release-gate]
+  CR --> RA[Release Agent]
+  RA --> REP[完工報告]
   H -->|紅| P
   CR -->|Major| P
-  R -->|紅| P
+  RA -->|紅| W
 ```
 
 | 邊 | 規則 |
@@ -88,8 +127,9 @@ flowchart TB
 | B → M | 只寫 `docs/`、`static/test/`；劇情對齊 Case ID |
 | M → H | 匯合後 **先** `check` |
 | H → CR | check 綠才 CodeReviewer（唯讀） |
-| CR → R | Major=0 才 Smoke／Release |
-| R 紅 → Plan/Work | 契約衝突或並行改同一檔 → 回 Work 序列化 |
+| CR → RA | Major=0；bootRun UP（L1） |
+| RA → REP | `ALL_RELEASE_GATE_OK` + 證據欄雙通道 |
+| RA 紅 → Work | Smoke／health 失敗 → 回 Work |
 
 ---
 
