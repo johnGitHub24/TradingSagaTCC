@@ -80,6 +80,10 @@ public class SagaOrchestrator {
      * 【職責】啟動一筆交易 Saga：訂單 PENDING、Saga ACCOUNT_TRYING、Outbox 登記 RESERVE_FUNDS。
      * 【技巧】同 TX 寫 order／saga／outbox；真正 Kafka 發送交給 {@code OutboxRelayJob}。
      * 【概念】回傳的 status 幾乎一定是 PENDING；完成與否要輪詢 Saga／訂單。
+     * 【概念·局部全成或全敗】掛 {@code orderTransactionManager}：訂單＋Saga＋Outbox
+     * 必須全部成功才 commit；任一失敗全部 rollback（像「全域」語感，但只限訂單庫＝Local TX）。
+     * 此時帳戶尚未扣款——那是下一階 Kafka／TCC 用 {@code accountTransactionManager} 另開局部 TX。
+     * 不是 XA（跨兩庫同一筆全域事務／2PC）；XA 名詞見 {@link com.trading.saga.config.OrderDataSourceConfig}。
      * 【使用】對應 Case SAGA-001／002／TCC-002／OUTBOX-001 的入口。
      * <pre>
      * TradeResponse r = orchestrator.start(new TradeRequest(
