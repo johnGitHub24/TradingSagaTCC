@@ -9,6 +9,10 @@ import java.math.BigDecimal;
  * 【概念·預留票】Try 成功會留下一張以 sagaId 為 PK 的預留票，供後續 Confirm／Cancel 對帳與冪等。
  * 【使用】由 {@code AccountCommandHandler} 依 Kafka command 呼叫；業務程式勿直接從 Controller 呼叫。
  * 【邊界】實作只能碰自己的庫。
+ *
+ * <p>【怎麼運作／注入】角色＝本介面；演員＝{@link com.trading.saga.account.AccountTccService}
+ * （{@code @Service} + {@code implements TccResource}）。
+ * {@link com.trading.saga.messaging.AccountCommandHandler} 建構子只要 {@code TccResource}，Spring 自動注入。
  */
 public interface TccResource {
 

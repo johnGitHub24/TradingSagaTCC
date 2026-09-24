@@ -10,6 +10,9 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 /**
  * 【職責】記憶體 ring buffer，給前台看 Kafka 走過哪些 type。
  * 【邊界】不持久化；重啟即空。正式觀測應改接 topic UI／OpenTelemetry（擴增）。
+ *
+ * <p>【怎麼運作】{@code @Service} 無建構子參數 → Spring 用預設建構子建 Bean；
+ * 再被 {@link KafkaTemplateMessageSender}／Controller 建構子注入使用。
  */
 @Service
 public class EventLogService {

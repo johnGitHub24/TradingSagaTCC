@@ -13,9 +13,10 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 
 /**
- * 【職責】訂單庫 Outbox：與訂單／Saga 同一交易寫入，提交後才進 Kafka。
- * 【技巧】publishedAt == null 表示待發送；Relay 送出後才填。
- * 【概念】避免「DB 成功但 Kafka 失敗」造成雙寫不一致；帳戶庫本版不寫 Outbox（擴增點）。
+ * 【職責】訂單庫 Outbox（**發件匣**）：與訂單／Saga 同一交易寫入，提交後才進 Kafka。
+ * 【技巧】publishedAt == null 表示待發送（還在匣裡）；Relay 送出後才填。
+ * 【概念】一列＝匣裡的一封信（topic／key／payload）。避免「DB 成功但 Kafka 失敗」雙寫不一致。
+ * 中文理解見 {@code docs/outbox-發件匣.md}。帳戶庫本版不寫 Outbox（擴增點）。
  */
 @Entity
 @Table(name = "outbox_events")

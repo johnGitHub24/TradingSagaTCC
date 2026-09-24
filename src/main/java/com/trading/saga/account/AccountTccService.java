@@ -23,6 +23,9 @@ import java.util.Optional;
  * 不是訂單；重送同 sagaId 看到票已存在就不再二次扣 available。
  * 【使用】實作 {@link TccResource}；由 {@code AccountCommandHandler} 呼叫，勿從 HTTP Controller 直呼。
  * 【邊界】只用 accountTransactionManager；不寫訂單表。
+ *
+ * <p>【怎麼運作／注入】{@code @Service} + {@code implements TccResource} →
+ * 登錄成 TCC Bean；{@link com.trading.saga.messaging.AccountCommandHandler} 寫介面即可拿到本類。
  */
 @Service
 public class AccountTccService implements TccResource {
@@ -31,7 +34,7 @@ public class AccountTccService implements TccResource {
     private final TccReservationRepository reservationRepository;
 
     /**
-     * 【職責】注入帳戶庫 Repository。
+     * 【職責】注入帳戶庫 Repository（建構子注入）。
      * 【使用】Spring 建構；測試可用 Mockito 注入假 Repository。
      *
      * @param accountRepository     帳戶表

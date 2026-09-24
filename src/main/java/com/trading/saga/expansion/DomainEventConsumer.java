@@ -7,6 +7,10 @@ import com.trading.saga.messaging.SagaMessage;
  * 【使用】實作類：{@code AccountCommandHandler}（command）、{@code OrderSagaEventHandler}（event）；
  * 由 {@code SagaKafkaListeners} 注入並轉送。
  * 【邊界】不改 topic 名稱與 {@link SagaMessage} 欄位。
+ *
+ * <p>【怎麼運作／注入】兩個實作都標 {@code @Service}，都會變成 {@code DomainEventConsumer} Bean。
+ * {@link com.trading.saga.messaging.SagaKafkaListeners} 建構子因此必須 {@code @Qualifier} 指名，
+ * 否則 Spring 不知道 command 線要哪個、event 線要哪個（對照：OutboxRelay 只有一個實作就不必 Qualifier）。
  */
 public interface DomainEventConsumer {
 

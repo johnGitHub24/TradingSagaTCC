@@ -11,9 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * 【職責】Outbox 寫入與發送：append 與訂單同交易；publishPending 另開交易送 Kafka。
+ * 【職責】Outbox（發件匣）寫入與發送：append 與訂單同交易；publishPending 另開交易送 Kafka。
  * 【技巧】先 send 成功再 markPublished，避免「標已發送但其實沒進 broker」。
- * 【概念】這是「提交後發訊」的最小實作；獨立 relay 進程只要換 {@link OutboxRelay} 部署方式。
+ * 【概念】「提交後發訊」：匣＝本庫表；寄＝Kafka。中文敘述見 {@code docs/outbox-發件匣.md}。
+ * <p>為何 Job 建構子寫 {@link OutboxRelay} 卻會拿到本類？
+ * 因為本類同時 {@code implements OutboxRelay}，又標了 {@code @Service}，
+ * Spring 把「本物件」登錄成 {@code OutboxRelay} 型別的 Bean；
+ * {@link OutboxRelayJob} 只要這個介面時，容器就把本實例塞進去（依賴注入）。
  * 【使用】業務路徑呼叫 {@link #append}；排程呼叫 {@link #publishPending}（見 {@link OutboxRelayJob}）。
  */
 @Service

@@ -25,6 +25,17 @@ import java.util.UUID;
  * 【概念】HTTP 只保證「Saga 已登記」；扣款成敗由後續 Kafka／TCC 決定。
  * 【使用】僅由 {@code TradeController.place} 呼叫；勿在 Job／Listener 重複 start 同一業務意圖。
  * 【邊界】不呼叫帳戶寫入、不直接 KafkaTemplate。
+ *
+ * <p>【怎麼運作】
+ * <ol>
+ *   <li>註冊：{@code @Service} → Spring 建立本 Bean。</li>
+ *   <li>注入：建構子要 {@link AccountLookup}（實作＝{@link com.trading.saga.account.AccountQueryService}）、
+ *       三個訂單庫 Repository、{@link OutboxPort}（實作＝{@link com.trading.saga.messaging.OutboxPublisherService}）、
+ *       以及 {@code @Value} 的 command topic。沒有無參建構子。</li>
+ *   <li>進線：HTTP {@code POST /trades} → {@link #start}。</li>
+ *   <li>同 TX：寫訂單＋Saga＋{@link OutboxPort#append}（發件匣 unpublished）。</li>
+ *   <li>出線：真正 Kafka 由 {@link com.trading.saga.messaging.OutboxRelayJob} 稍後寄出。</li>
+ * </ol>
  */
 @Service
 public class SagaOrchestrator {
@@ -40,10 +51,16 @@ public class SagaOrchestrator {
     private final String commandTopic;
 
     /**
-     * 【職責】組裝編排所需埠。
-     * 【使用】Spring 注入；{@code commandTopic} 來自 {@code trading.kafka.command-topic}。
+     * 【職責】組裝編排所需埠（建構子注入，見類別上方【怎麼運作】）。
+     * 【技巧】{@link AccountLookup}／{@link OutboxPort} 寫介面；Spring 找唯一實作。
+     * 【概念】和 {@link com.trading.saga.messaging.OrderSagaEventHandler} 同一套 DI。
      *
-     * @param commandTopic Kafka command topic 名稱
+     * @param accountLookup            啟動前確認帳戶存在（跨庫只讀）
+     * @param orderRepository          訂單
+     * @param sagaInstanceRepository   Saga 實例
+     * @param sagaStepRepository       步驟軌跡
+     * @param outboxPort               發件匣寫入
+     * @param commandTopic             Kafka command topic（{@code trading.kafka.command-topic}）
      */
     public SagaOrchestrator(AccountLookup accountLookup,
                             TradeOrderRepository orderRepository,

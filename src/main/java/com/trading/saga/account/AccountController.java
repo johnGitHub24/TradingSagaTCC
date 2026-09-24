@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 【職責】帳戶查詢與練習重置。
  * 【使用】前台顯示餘額／「還原種子」按鈕；Case ACCOUNT-001。
+ *
+ * <p>【怎麼運作】{@code @RestController} + 建構子注入 {@link AccountQueryService}（與 {@link TradeController} 相同 DI）。
  */
 @RestController
 @RequestMapping("/api/v1/accounts")
@@ -18,7 +20,7 @@ public class AccountController {
     private final AccountQueryService accountQueryService;
 
     /**
-     * 【職責】注入查詢服務。
+     * 【職責】注入查詢服務（建構子注入）。
      */
     public AccountController(AccountQueryService accountQueryService) {
         this.accountQueryService = accountQueryService;

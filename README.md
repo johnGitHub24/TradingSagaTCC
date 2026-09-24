@@ -10,7 +10,8 @@
 |------|------|
 | [TradingSagaTCC 規格書.md](TradingSagaTCC%20規格書.md) | **主規格書（權威）** |
 | [API規格書.md](API規格書.md) | API 端點、錯誤碼 |
-| [docs/architecture.md](docs/architecture.md) | 分層與雙庫／Kafka |
+| [docs/architecture.md](docs/architecture.md) | 分層與雙庫／Kafka／Outbox 摘要 |
+| [docs/outbox-發件匣.md](docs/outbox-發件匣.md) | **Outbox＝發件匣** 中文敘述與元件對照 |
 | [docs/codeGraphic.html](docs/codeGraphic.html) | Tab 式架構圖：**正向／負向／Case→Hotspot**（非權威） |
 | [docs/swagger.html](docs/swagger.html) | API（Swagger UI） |
 | [docs/testing.md](docs/testing.md) | Case／check／DoD／**Runtime Smoke L0～L1** |

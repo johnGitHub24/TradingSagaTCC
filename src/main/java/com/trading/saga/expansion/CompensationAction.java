@@ -5,6 +5,11 @@ package com.trading.saga.expansion;
  * 【概念】Saga 補償是「反向業務」，不是 DB rollback 跨庫。
  * 【使用】本專案實作 {@code OrderMarkFailedAction}；由事件處理器在失敗 event 時呼叫。
  * 【邊界】每個實作只動自己的庫。
+ *
+ * <p>【怎麼運作／注入】角色＝本介面；演員＝{@link com.trading.saga.saga.OrderMarkFailedAction}
+ * （{@code @Service} + {@code implements CompensationAction}）。
+ * {@link com.trading.saga.messaging.OrderSagaEventHandler} 建構子只要 {@code CompensationAction}，
+ * Spring 找唯一實作注入（與 OutboxRelay → Publisher 相同）。
  */
 public interface CompensationAction {
 

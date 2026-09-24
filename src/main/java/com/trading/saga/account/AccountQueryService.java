@@ -13,6 +13,9 @@ import java.math.BigDecimal;
  * 【職責】帳戶查詢與練習重置；並實作 {@link AccountLookup} 給訂單側啟動前確認存在。
  * 【使用】HTTP 經 {@link AccountController}；編排經 {@link AccountLookup#requireExists}。
  * 【邊界】唯讀查詢用 account TM；reset 只改帳戶庫。
+ *
+ * <p>【怎麼運作／注入】{@code @Service} + {@code implements AccountLookup} →
+ * 同時是查詢服務與 Lookup 埠；Orchestrator 寫介面即可拿到本類。
  */
 @Service
 public class AccountQueryService implements AccountLookup {
@@ -23,7 +26,7 @@ public class AccountQueryService implements AccountLookup {
     private final AccountRepository accountRepository;
 
     /**
-     * 【職責】注入帳戶 Repository。
+     * 【職責】注入帳戶 Repository（建構子注入）。
      */
     public AccountQueryService(AccountRepository accountRepository) {
         this.accountRepository = accountRepository;

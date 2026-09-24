@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 【職責】Demo 聚合讀取，減少前台來回。
+ *
+ * <p>【怎麼運作】{@code @RestController} + 建構子注入三個 Service（帳戶／訂單／事件軌跡）。
  */
 @RestController
 @RequestMapping("/api/v1/demo")
@@ -19,7 +21,7 @@ public class DemoController {
     private final EventLogService eventLogService;
 
     /**
-     * 建構 Demo API。
+     * 【職責】注入 Demo 所需查詢 Bean（建構子注入）。
      */
     public DemoController(AccountQueryService accountQueryService,
                           TradeQueryService tradeQueryService,

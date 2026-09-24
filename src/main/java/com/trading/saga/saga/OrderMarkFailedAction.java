@@ -18,6 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
  * 【概念】補償不是 rollback 帳戶庫（帳戶由 TCC Cancel 自己還原）。
  * 【使用】由 {@code OrderSagaEventHandler} 在 FUNDS_FAILED／FUNDS_CANCELLED 時呼叫。
  * 【邊界】只寫訂單庫。
+ *
+ * <p>【怎麼運作／注入】{@code @Service} + {@code implements CompensationAction} →
+ * 登錄成補償 Bean；{@link com.trading.saga.messaging.OrderSagaEventHandler} 建構子寫介面即可拿到本類
+ * （與 OutboxPublisherService 當 OutboxRelay 同一套路）。
  */
 @Service
 public class OrderMarkFailedAction implements CompensationAction {
@@ -27,7 +31,7 @@ public class OrderMarkFailedAction implements CompensationAction {
     private final SagaStepRepository sagaStepRepository;
 
     /**
-     * 【職責】注入訂單庫寫入埠。
+     * 【職責】注入訂單庫寫入埠（建構子注入）。
      * 【使用】Spring 建構；單元測試 Mock 三個 Repository。
      */
     public OrderMarkFailedAction(SagaInstanceRepository sagaInstanceRepository,

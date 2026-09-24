@@ -10,6 +10,18 @@ import org.springframework.stereotype.Service;
  * 【技巧】command 成功與否一律轉成 event 告訴編排者；本類不寫訂單庫。
  * 【概念】TCC 參與者角色；與 {@link OrderSagaEventHandler} 成對。
  * 【使用】由 {@link SagaKafkaListeners#onCommand} 轉送；勿手動 new 後呼叫（需 Spring 注入的 TCC／Kafka）。
+ *
+ * <p>【怎麼運作】
+ * <ol>
+ *   <li>註冊：{@code @Service} + {@code implements DomainEventConsumer}
+ *       → Bean 名 {@code accountCommandHandler}，供 Listener {@code @Qualifier} 注入。</li>
+ *   <li>注入：建構子要 {@link TccResource}（實作＝{@link com.trading.saga.account.AccountTccService}）、
+ *       {@link KafkaMessageSender}（實作＝{@link KafkaTemplateMessageSender}）、
+ *       以及 {@code @Value} 的 event topic。沒有無參建構子。</li>
+ *   <li>進線：{@link SagaKafkaListeners#onCommand} → {@link #onMessage}。</li>
+ *   <li>分派：RESERVE／CONFIRM／CANCEL → TCC → {@link #publish} 直接送 event topic
+ *       （帳戶側結果事件本版不走 Outbox，與訂單側「提交後發訊」對稱但路徑不同）。</li>
+ * </ol>
  */
 @Service
 public class AccountCommandHandler implements DomainEventConsumer {
@@ -19,9 +31,13 @@ public class AccountCommandHandler implements DomainEventConsumer {
     private final String eventTopic;
 
     /**
-     * 【職責】綁定 TCC 與 event topic。
+     * 【職責】綁定 TCC 與 event topic（建構子注入，見類別上方【怎麼運作】）。
+     * 【技巧】{@link TccResource}／{@link KafkaMessageSender} 皆為介面；Spring 找唯一實作塞入。
+     * 【概念】和 {@link OrderSagaEventHandler}、{@link OutboxRelayJob} 同一套 DI。
      *
-     * @param eventTopic {@code trading.kafka.event-topic}
+     * @param tccResource         帳戶 TCC（本版＝AccountTccService）
+     * @param kafkaMessageSender  實際寄 Kafka
+     * @param eventTopic          {@code trading.kafka.event-topic}
      */
     public AccountCommandHandler(TccResource tccResource,
                                  KafkaMessageSender kafkaMessageSender,

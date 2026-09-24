@@ -20,6 +20,9 @@ import java.util.List;
  * 【職責】HTTP 轉下單／查單／查 Saga；禁止碰 Repository。
  * 【技巧】寫入走 {@link SagaOrchestrator}；讀取走 {@link TradeQueryService}。
  * 【使用】前台 {@code app.js}／Smoke／Swagger 都打 {@code /api/v1/...}。
+ *
+ * <p>【怎麼運作】{@code @RestController} → Spring MVC 登錄路由；建構子注入兩個 Service Bean，
+ * 沒有 {@code new SagaOrchestrator(...)}。請求進來 → 方法 → 轉交 Service。
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -29,7 +32,8 @@ public class TradeController {
     private final TradeQueryService tradeQueryService;
 
     /**
-     * 【職責】注入編排與查詢。
+     * 【職責】注入編排與查詢（建構子注入）。
+     * 【概念】Controller 薄：只轉呼叫，不自己組依賴。
      */
     public TradeController(SagaOrchestrator sagaOrchestrator, TradeQueryService tradeQueryService) {
         this.sagaOrchestrator = sagaOrchestrator;

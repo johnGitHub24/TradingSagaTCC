@@ -18,8 +18,29 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 【職責】訂單側消費帳戶事件：下 Confirm 命令、完成訂單、或觸發補償。
  * 【技巧】終態直接略過，避免 Kafka 重送把已完成 Saga 再轉一次。
- * 【概念】編排者只根據事件推進自己的庫。
- * 【使用】由 {@link SagaKafkaListeners#onEvent} 轉送。
+ * 【概念】編排者只根據事件推進自己的庫（orderdb），不直接改帳戶庫。
+ * 【使用】由 {@link SagaKafkaListeners#onEvent} 轉送進來。
+ *
+ * <p>【怎麼運作】從頭到腳：
+ * <ol>
+ *   <li>註冊：類別標 {@code @Service} → Spring 啟動時建立一個 Bean。</li>
+ *   <li>注入：唯一建構子參數全部由容器塞入（建構子依賴注入）——
+ *       Repository、{@link OutboxPort}、{@link CompensationAction}，
+ *       以及 {@code @Value} 讀到的 command topic 字串。
+ *       沒有無參建構子，也沒有 {@code new OrderSagaEventHandler(...)}。</li>
+ *   <li>進線：Kafka 帳戶事件 → {@code SagaKafkaListeners.onEvent}
+ *       → 本類 {@link #onMessage}（{@link DomainEventConsumer} 契約）。</li>
+ *   <li>分派：依 {@code message.type()}——
+ *       {@code FUNDS_RESERVED} → 寫 Outbox Confirm 命令；
+ *       {@code FUNDS_CONFIRMED} → 訂單 FILLED、Saga COMPLETED；
+ *       {@code FUNDS_FAILED}/{@code CANCELLED} → {@link CompensationAction#compensate}。</li>
+ *   <li>出線：Confirm 不直接打 Kafka，而是 {@link OutboxPort#append} 進發件匣，
+ *       再由 {@link OutboxRelayJob} 定時寄出（提交後發訊）。</li>
+ * </ol>
+ *
+ * <p>【對照】和 {@link OutboxRelayJob} 一樣都是建構子注入；
+ * Job 只要一個 {@link com.trading.saga.expansion.OutboxRelay}，
+ * 本類要一組「編排推進」依賴，多一個 {@code @Value} 設定字串。
  */
 @Service
 public class OrderSagaEventHandler implements DomainEventConsumer {
@@ -35,9 +56,16 @@ public class OrderSagaEventHandler implements DomainEventConsumer {
     private final String commandTopic;
 
     /**
-     * 【職責】組裝編排推進所需依賴。
+     * 【職責】組裝編排推進所需依賴（建構子注入，見類別上方【怎麼運作】第 2 步）。
+     * 【技巧】前五個是 Spring Bean；最後一個用 {@code @Value} 從設定檔注入字串（不是 Bean）。
+     * 【概念】Spring 看到唯一建構子 → 自動找齊參數再呼叫；你不用自己 new。
      *
-     * @param commandTopic 寫回 Confirm 命令用的 topic
+     * @param sagaInstanceRepository Saga 實例（orderdb）
+     * @param orderRepository        訂單（orderdb）
+     * @param sagaStepRepository     步驟軌跡（orderdb）
+     * @param outboxPort             發件匣寫入（實作通常為 {@link OutboxPublisherService}）
+     * @param compensationAction     失敗／取消時補償
+     * @param commandTopic           寫回 Confirm 命令用的 Kafka topic（{@code trading.kafka.command-topic}）
      */
     public OrderSagaEventHandler(SagaInstanceRepository sagaInstanceRepository,
                                  TradeOrderRepository orderRepository,

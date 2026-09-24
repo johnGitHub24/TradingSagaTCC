@@ -31,7 +31,7 @@ outbox_events
 | Entry UI | `app.js` | `place`／`pollSaga`／`reportOutcome` |
 | HTTP | `TradeController` | `place` |
 | 編排起點 | `SagaOrchestrator` | `start` |
-| Outbox | `OutboxRelayJob`／`OutboxPublisherService` | `tick`／`append`／`publishPending` |
+| Outbox | `OutboxRelayJob`／`OutboxPublisherService` | `tick`／`append`／`publishPending`（**發件匣**，見 [outbox-發件匣.md](outbox-發件匣.md)） |
 | Kafka 配線 | `SagaKafkaListeners` | `onCommand`／`onEvent` |
 | TCC 參與者 | `AccountCommandHandler` | `onMessage` |
 | TCC 資金 | `AccountTccService`／`Account` | `tryReserve`／`confirm`／`cancel` |
@@ -63,6 +63,11 @@ outbox_events
 | TCC-002 | `confirm(true)` | 內呼 `cancel` → `FUNDS_CANCELLED` → `compensate` |
 
 **狀態語意：** 成功＝Saga `COMPLETED`＋訂單 `FILLED`；補償＝Saga `COMPENSATED`＋訂單 `FAILED`。
+
+## Outbox（發件匣）摘要
+
+中文：**發件匣**。訂單同 TX 寫入 `outbox_events`（待發），`OutboxRelayJob` 定時轉送 Kafka（提交後發訊）。  
+完整敘述與和「預留票」對照 → [outbox-發件匣.md](outbox-發件匣.md)。
 
 ## 模組地圖
 

@@ -15,6 +15,8 @@ import java.util.List;
  * 【職責】訂單／Saga 唯讀查詢（訂單庫）。
  * 【使用】由 {@link TradeController}／{@link DemoController} 呼叫；單元測試可 Mock Repository。
  * 【邊界】不啟動 Saga、不寫 Outbox。
+ *
+ * <p>【怎麼運作】{@code @Service} + 建構子注入三個 Repository（Spring Data 自動產生實作 Bean）。
  */
 @Service
 public class TradeQueryService {
@@ -24,7 +26,7 @@ public class TradeQueryService {
     private final SagaStepRepository sagaStepRepository;
 
     /**
-     * 【職責】注入訂單庫唯讀埠。
+     * 【職責】注入訂單庫唯讀埠（建構子注入）。
      */
     public TradeQueryService(TradeOrderRepository orderRepository,
                              SagaInstanceRepository sagaInstanceRepository,
