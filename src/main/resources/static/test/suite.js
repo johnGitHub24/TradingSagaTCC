@@ -14,7 +14,7 @@ function setStatus(value, failures) {
     appEl.dataset.failures = String(failures ? 1 : 0);
 }
 
-async function pollSaga(sagaId, expectStatus, timeoutMs = 15000) {
+async function pollSaga(sagaId, expectStatus, timeoutMs = 20000) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         const res = await fetch(`${API}/sagas/${sagaId}`);

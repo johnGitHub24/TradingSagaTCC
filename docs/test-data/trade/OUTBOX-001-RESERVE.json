@@ -1,0 +1,9 @@
+{
+  "description": "OUTBOX-001／SAGA-001 同 body — 啟動後軌跡須含 RESERVE_FUNDS",
+  "accountId": "ACC-001",
+  "symbol": "BTCUSDT",
+  "side": "BUY",
+  "quantity": 1,
+  "price": 10000,
+  "forceFail": false
+}

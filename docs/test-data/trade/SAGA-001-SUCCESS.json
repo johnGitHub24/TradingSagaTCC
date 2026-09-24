@@ -1,0 +1,9 @@
+{
+  "description": "SAGA-001 Happy Path — BUY 1×10000，預期 Saga COMPLETED／訂單 FILLED／available 90000",
+  "accountId": "ACC-001",
+  "symbol": "BTCUSDT",
+  "side": "BUY",
+  "quantity": 1,
+  "price": 10000,
+  "forceFail": false
+}

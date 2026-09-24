@@ -81,7 +81,11 @@
           <p v-if="!currentSaga" class="muted mb-0">尚未下單。點左側按鈕後會輪詢終態。</p>
           <div v-else>
             <p>sagaId <code>{{ currentSaga.sagaId }}</code></p>
-            <p>status <span class="badge" :class="sagaBadge">{{ currentSaga.status }}</span></p>
+            <p>Saga <span class="badge" :class="sagaBadge">{{ currentSaga.status }}</span>
+              <span class="muted mx-1">／</span>
+              訂單 <span class="badge" :class="orderBadge">{{ currentOrder?.status ?? '—' }}</span>
+            </p>
+            <p class="muted small">成功＝Saga <code>COMPLETED</code>＋訂單 <code>FILLED</code>；補償＝Saga <code>COMPENSATED</code>＋訂單 <code>FAILED</code>（勿把訂單 FAILED 當成扣款失敗）。</p>
             <ol class="mb-0">
               <li v-for="(s, i) in currentSaga.steps" :key="i">
                 <strong>{{ s.name }}</strong> — {{ s.detail }}
@@ -95,14 +99,14 @@
         <div class="table-responsive">
           <table class="table table-sm mb-0">
             <thead class="table-light">
-              <tr><th>status</th><th>amount</th><th>forceFail</th><th>orderId</th></tr>
+              <tr><th>訂單 status</th><th>amount</th><th>forceFail</th><th>orderId</th></tr>
             </thead>
             <tbody>
               <tr v-if="orders.length === 0">
                 <td colspan="4" class="text-center muted py-3">尚無訂單</td>
               </tr>
-              <tr v-for="o in orders" :key="o.orderId">
-                <td>{{ o.status }}</td>
+              <tr v-for="o in orders" :key="o.orderId" :class="{ 'table-active': currentSaga && o.orderId === currentSaga.orderId }">
+                <td><span class="badge" :class="orderBadgeClass(o.status)">{{ o.status }}</span></td>
                 <td>{{ o.amount }}</td>
                 <td>{{ o.forceFail }}</td>
                 <td><code>{{ o.orderId.slice(0, 8) }}…</code></td>

@@ -13,9 +13,13 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
- * 【職責】帳戶庫的 TCC 預留紀錄，以 sagaId 當自然鍵以利冪等 Try／Cancel。
+ * 【職責】帳戶庫的 TCC 預留紀錄（俗稱「預留票」），以 sagaId 當自然鍵以利冪等 Try／Cancel。
  * 【技巧】同一 saga 重送 Reserve 時直接回既有列，不重複扣 available。
- * 【概念】這是帳戶自己的「預留票」；訂單庫看不到這張表（雙庫邊界）。
+ * 【概念】預留票＝帳戶側的 TCC 憑證（非訂單）：
+ * Try 發票（available→frozen＋寫本列）；Confirm 兌票扣款（吃掉 frozen）；Cancel 退票還原。
+ * 訂單庫看不到此表，只靠 Kafka 事件得知結果。
+ * 【使用】經 {@code AccountTccService}／Repository 操作；PK＝sagaId（冪等 Key）。
+ * 【邊界】這是帳戶自己的「預留票」；不要與 trade_orders 混淆。
  */
 @Entity
 @Table(name = "tcc_reservations")
@@ -49,14 +53,16 @@ public class TccReservation {
     }
 
     /**
-     * 建立 TRYING 預留（尚未 persist）。
+     * 【職責】建立 TRYING 預留（尚未 persist）。
+     * 【使用】Try 成功後 {@code reservationRepository.save(TccReservation.trying(...))}。
      */
     public static TccReservation trying(String sagaId, String accountId, BigDecimal amount) {
         return new TccReservation(sagaId, accountId, amount);
     }
 
     /**
-     * 標記已 Confirm。
+     * 【職責】標記已 Confirm（TRYING → CONFIRMED）。
+     * 【使用】僅 Confirm 成功路徑；非 TRYING 會丟 IllegalStateException。
      */
     public void markConfirmed() {
         if (state != TccState.TRYING) {
@@ -66,7 +72,8 @@ public class TccReservation {
     }
 
     /**
-     * 標記已 Cancel；已 CANCELLED 則冪等略過。
+     * 【職責】標記已 Cancel；已 CANCELLED 則冪等略過。
+     * 【使用】Cancel／forceFail 路徑；回 true 表示本次真正從 TRYING 轉出（才需還錢）。
      *
      * @return true 表示本次真正從 TRYING 轉出
      */

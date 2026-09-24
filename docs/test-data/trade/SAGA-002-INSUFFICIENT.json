@@ -1,0 +1,9 @@
+{
+  "description": "SAGA-002 餘額不足 — BUY 1×999999，預期 Saga COMPENSATED／訂單 FAILED／餘額不變",
+  "accountId": "ACC-001",
+  "symbol": "BTCUSDT",
+  "side": "BUY",
+  "quantity": 1,
+  "price": 999999,
+  "forceFail": false
+}

@@ -13,6 +13,7 @@ import java.util.List;
 
 /**
  * 【職責】訂單／Saga 唯讀查詢（訂單庫）。
+ * 【使用】由 {@link TradeController}／{@link DemoController} 呼叫；單元測試可 Mock Repository。
  * 【邊界】不啟動 Saga、不寫 Outbox。
  */
 @Service
@@ -23,7 +24,7 @@ public class TradeQueryService {
     private final SagaStepRepository sagaStepRepository;
 
     /**
-     * 建構查詢服務。
+     * 【職責】注入訂單庫唯讀埠。
      */
     public TradeQueryService(TradeOrderRepository orderRepository,
                              SagaInstanceRepository sagaInstanceRepository,
@@ -34,7 +35,10 @@ public class TradeQueryService {
     }
 
     /**
-     * @return 新到舊訂單
+     * 【職責】列出訂單（新到舊）。
+     * 【使用】Demo 面板「訂單」表；{@code GET /api/v1/trades}。
+     *
+     * @return 訂單 DTO 列表
      */
     @Transactional(value = "orderTransactionManager", readOnly = true)
     public List<TradeResponse> listOrders() {
@@ -44,6 +48,12 @@ public class TradeQueryService {
     }
 
     /**
+     * 【職責】依 id 取單筆；不存在拋 404。
+     * 【使用】Case TRADE-001。
+     * <pre>
+     * tradeQueryService.getOrder("missing-order"); // → ResourceNotFoundException
+     * </pre>
+     *
      * @param orderId 訂單 id
      * @return DTO
      */
@@ -55,8 +65,11 @@ public class TradeQueryService {
     }
 
     /**
+     * 【職責】取 Saga 狀態＋步驟時間軸。
+     * 【使用】前台輪詢終態；{@code GET /api/v1/sagas/{sagaId}}。
+     *
      * @param sagaId 流程 id
-     * @return 含步驟
+     * @return 含 steps
      */
     @Transactional(value = "orderTransactionManager", readOnly = true)
     public SagaResponse getSaga(String sagaId) {

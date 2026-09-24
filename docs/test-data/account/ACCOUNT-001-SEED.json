@@ -1,0 +1,6 @@
+{
+  "description": "ACCOUNT-001 種子帳戶預期（GET 對照；非 POST body）",
+  "accountId": "ACC-001",
+  "available": 100000,
+  "frozen": 0
+}

@@ -23,6 +23,7 @@ import java.util.UUID;
  * 【職責】編排起點：在訂單庫一筆交易寫訂單＋Saga＋Outbox command。
  * 【技巧】先 {@link AccountLookup#requireExists}（只讀帳戶庫），再寫訂單庫；不開 XA。
  * 【概念】HTTP 只保證「Saga 已登記」；扣款成敗由後續 Kafka／TCC 決定。
+ * 【使用】僅由 {@code TradeController.place} 呼叫；勿在 Job／Listener 重複 start 同一業務意圖。
  * 【邊界】不呼叫帳戶寫入、不直接 KafkaTemplate。
  */
 @Service
@@ -39,7 +40,10 @@ public class SagaOrchestrator {
     private final String commandTopic;
 
     /**
-     * @param commandTopic {@code trading.kafka.command-topic}
+     * 【職責】組裝編排所需埠。
+     * 【使用】Spring 注入；{@code commandTopic} 來自 {@code trading.kafka.command-topic}。
+     *
+     * @param commandTopic Kafka command topic 名稱
      */
     public SagaOrchestrator(AccountLookup accountLookup,
                             TradeOrderRepository orderRepository,
@@ -56,10 +60,18 @@ public class SagaOrchestrator {
     }
 
     /**
-     * 啟動 Saga：訂單 PENDING，Outbox {@code RESERVE_FUNDS}。
+     * 【職責】啟動一筆交易 Saga：訂單 PENDING、Saga ACCOUNT_TRYING、Outbox 登記 RESERVE_FUNDS。
+     * 【技巧】同 TX 寫 order／saga／outbox；真正 Kafka 發送交給 {@code OutboxRelayJob}。
+     * 【概念】回傳的 status 幾乎一定是 PENDING；完成與否要輪詢 Saga／訂單。
+     * 【使用】對應 Case SAGA-001／002／TCC-002／OUTBOX-001 的入口。
+     * <pre>
+     * TradeResponse r = orchestrator.start(new TradeRequest(
+     *     "ACC-001", "BTCUSDT", "BUY", BigDecimal.ONE, new BigDecimal("10000"), false));
+     * // r.status() == PENDING；之後等 Outbox → Kafka → TCC
+     * </pre>
      *
-     * @param request 下單
-     * @return 當下訂單快照（多為 PENDING）
+     * @param request 下單（含可選 forceFail）
+     * @return 當下訂單快照（含 sagaId／orderId，多為 PENDING）
      */
     @Transactional("orderTransactionManager")
     public TradeResponse start(TradeRequest request) {

@@ -1,7 +1,6 @@
 package com.trading.saga.integration;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.trading.saga.order.dto.TradeRequest;
+import com.trading.saga.support.SagaTestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -15,7 +14,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.math.BigDecimal;
+import java.time.Duration;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.containsString;
@@ -25,11 +24,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import java.time.Duration;
-
 /**
  * 【職責】HTTP＋雙 H2＋內嵌 Kafka 整合層；與單元層同一 Case ID。
- * 【技巧】Awaitility 等 Outbox Relay／Consumer 把 Saga 推到終態。
+ * 【技巧】Request body 來自 {@code docs/test-data/}（EOS Fixture）；Awaitility 等終態。
  */
 @Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -46,8 +43,6 @@ class TradeSagaIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @BeforeEach
     void resetSeed() throws Exception {
@@ -60,10 +55,11 @@ class TradeSagaIntegrationTest {
     @Test
     @DisplayName("ACCOUNT-001: GET /api/v1/accounts/ACC-001 → 200 seed balance")
     void getAccount_seed_200() throws Exception {
+        var seed = SagaTestFixtures.loadTree("account", "ACCOUNT-001-SEED");
         mockMvc.perform(get("/api/v1/accounts/ACC-001"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountId").value("ACC-001"))
-                .andExpect(jsonPath("$.available").value(100000));
+                .andExpect(jsonPath("$.accountId").value(seed.get("accountId").asText()))
+                .andExpect(jsonPath("$.available").value(seed.get("available").asInt()));
     }
 
     @Test
@@ -76,9 +72,9 @@ class TradeSagaIntegrationTest {
     }
 
     @Test
-    @DisplayName("SAGA-001: POST 1x10000 → FILLED / COMPLETED, available 90000")
+    @DisplayName("SAGA-001: POST fixture → FILLED / COMPLETED, available 90000")
     void happyPath_filled() throws Exception {
-        String sagaId = place(1, 10000, false);
+        String sagaId = placeFixture("SAGA-001-SUCCESS");
         await().atMost(Duration.ofSeconds(12)).untilAsserted(() ->
                 mockMvc.perform(get("/api/v1/sagas/" + sagaId))
                         .andExpect(status().isOk())
@@ -92,9 +88,9 @@ class TradeSagaIntegrationTest {
     }
 
     @Test
-    @DisplayName("SAGA-002: POST 1x999999 → COMPENSATED, account unchanged")
+    @DisplayName("SAGA-002: POST fixture → COMPENSATED, account unchanged")
     void insufficient_compensated() throws Exception {
-        String sagaId = place(1, 999999, false);
+        String sagaId = placeFixture("SAGA-002-INSUFFICIENT");
         await().atMost(Duration.ofSeconds(12)).untilAsserted(() ->
                 mockMvc.perform(get("/api/v1/sagas/" + sagaId))
                         .andExpect(status().isOk())
@@ -105,9 +101,9 @@ class TradeSagaIntegrationTest {
     }
 
     @Test
-    @DisplayName("TCC-002: forceFail=true → COMPENSATED, account restored")
+    @DisplayName("TCC-002: forceFail fixture → COMPENSATED, account restored")
     void forceFail_compensated() throws Exception {
-        String sagaId = place(1, 10000, true);
+        String sagaId = placeFixture("TCC-002-FORCE-FAIL");
         await().atMost(Duration.ofSeconds(12)).untilAsserted(() ->
                 mockMvc.perform(get("/api/v1/sagas/" + sagaId))
                         .andExpect(status().isOk())
@@ -118,25 +114,23 @@ class TradeSagaIntegrationTest {
     }
 
     @Test
-    @DisplayName("OUTBOX-001: placing a trade eventually publishes RESERVE_FUNDS on Kafka trail")
+    @DisplayName("OUTBOX-001: fixture place eventually publishes RESERVE_FUNDS")
     void outbox_reachesKafkaTrail() throws Exception {
-        place(1, 10000, false);
+        placeFixture("OUTBOX-001-RESERVE");
         await().atMost(Duration.ofSeconds(12)).untilAsserted(() ->
                 mockMvc.perform(get("/api/v1/events"))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$[*].type", hasItem("RESERVE_FUNDS"))));
     }
 
-    private String place(int quantity, int price, boolean forceFail) throws Exception {
-        TradeRequest request = new TradeRequest(
-                "ACC-001", "BTCUSDT", "BUY",
-                BigDecimal.valueOf(quantity), BigDecimal.valueOf(price), forceFail);
+    private String placeFixture(String caseId) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/trades")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .content(SagaTestFixtures.loadJson("trade", caseId)))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.sagaId").exists())
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).get("sagaId").asText();
+        return SagaTestFixtures.mapper().readTree(result.getResponse().getContentAsString())
+                .get("sagaId").asText();
     }
 }

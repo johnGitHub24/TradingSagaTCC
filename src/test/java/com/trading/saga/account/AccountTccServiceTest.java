@@ -5,6 +5,8 @@ import com.trading.saga.account.domain.TccReservation;
 import com.trading.saga.account.domain.TccState;
 import com.trading.saga.account.infrastructure.AccountRepository;
 import com.trading.saga.account.infrastructure.TccReservationRepository;
+import com.trading.saga.order.dto.TradeRequest;
+import com.trading.saga.support.SagaTestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +27,7 @@ import static org.mockito.Mockito.verify;
 
 /**
  * 【職責】{@link AccountTccService} 單元層：與 SAGA-001／SAGA-002／TCC-002 同一 TCC 契約。
- * 【技巧】Mock 兩個帳戶庫 Repository，不啟動 Kafka／訂單庫。
+ * 【技巧】金額來自 {@code docs/test-data/trade/*.json}；Mock 帳戶庫 Repository。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AccountTccService unit (TCC)")
@@ -49,28 +51,35 @@ class AccountTccServiceTest {
                 .build();
     }
 
+    private static BigDecimal amountOf(String caseId) {
+        TradeRequest req = SagaTestFixtures.loadDto("trade", caseId, TradeRequest.class);
+        return req.quantity().multiply(req.price());
+    }
+
     @Test
-    @DisplayName("SAGA-001: tryReserve 10000 succeeds and persists TRYING reservation")
+    @DisplayName("SAGA-001: tryReserve fixture amount succeeds and persists TRYING")
     void tryReserve_success() {
+        BigDecimal amount = amountOf("SAGA-001-SUCCESS");
         given(reservationRepository.findById("saga-1")).willReturn(Optional.empty());
         given(accountRepository.findById("ACC-001")).willReturn(Optional.of(account));
 
-        boolean ok = tccService.tryReserve("saga-1", "ACC-001", new BigDecimal("10000"));
+        boolean ok = tccService.tryReserve("saga-1", "ACC-001", amount);
 
         assertThat(ok).isTrue();
-        assertThat(account.getFrozen()).isEqualByComparingTo("10000");
+        assertThat(account.getFrozen()).isEqualByComparingTo(amount);
         ArgumentCaptor<TccReservation> captor = ArgumentCaptor.forClass(TccReservation.class);
         verify(reservationRepository).save(captor.capture());
         assertThat(captor.getValue().getState()).isEqualTo(TccState.TRYING);
     }
 
     @Test
-    @DisplayName("SAGA-002: tryReserve 999999 returns false and does not save reservation")
+    @DisplayName("SAGA-002: tryReserve insufficient fixture returns false")
     void tryReserve_insufficient_returnsFalse() {
+        BigDecimal amount = amountOf("SAGA-002-INSUFFICIENT");
         given(reservationRepository.findById("saga-2")).willReturn(Optional.empty());
         given(accountRepository.findById("ACC-001")).willReturn(Optional.of(account));
 
-        boolean ok = tccService.tryReserve("saga-2", "ACC-001", new BigDecimal("999999"));
+        boolean ok = tccService.tryReserve("saga-2", "ACC-001", amount);
 
         assertThat(ok).isFalse();
         assertThat(account.getAvailable()).isEqualByComparingTo("100000");
@@ -80,8 +89,9 @@ class AccountTccServiceTest {
     @Test
     @DisplayName("TCC-002: confirm(forceFail=true) cancels and restores available")
     void confirm_forceFail_cancels() {
-        account.tryReserve(new BigDecimal("10000"));
-        TccReservation reservation = TccReservation.trying("saga-3", "ACC-001", new BigDecimal("10000"));
+        BigDecimal amount = amountOf("TCC-002-FORCE-FAIL");
+        account.tryReserve(amount);
+        TccReservation reservation = TccReservation.trying("saga-3", "ACC-001", amount);
         given(reservationRepository.findById("saga-3")).willReturn(Optional.of(reservation));
         given(accountRepository.findById("ACC-001")).willReturn(Optional.of(account));
 
@@ -96,8 +106,9 @@ class AccountTccServiceTest {
     @Test
     @DisplayName("SAGA-001: confirm(forceFail=false) deducts frozen")
     void confirm_success() {
-        account.tryReserve(new BigDecimal("10000"));
-        TccReservation reservation = TccReservation.trying("saga-1", "ACC-001", new BigDecimal("10000"));
+        BigDecimal amount = amountOf("SAGA-001-SUCCESS");
+        account.tryReserve(amount);
+        TccReservation reservation = TccReservation.trying("saga-1", "ACC-001", amount);
         given(reservationRepository.findById("saga-1")).willReturn(Optional.of(reservation));
         given(accountRepository.findById("ACC-001")).willReturn(Optional.of(account));
 

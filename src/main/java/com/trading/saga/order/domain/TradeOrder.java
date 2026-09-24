@@ -73,7 +73,13 @@ public class TradeOrder {
     }
 
     /**
-     * 建立 PENDING 訂單。
+     * 【職責】建立 PENDING 訂單（尚未 persist）。
+     * 【使用】僅 {@code SagaOrchestrator.start} 呼叫；amount＝quantity×price。
+     * <pre>
+     * TradeOrder.pending(orderId, sagaId, "ACC-001", "BTCUSDT", "BUY", qty, price, false);
+     * </pre>
+     *
+     * @param forceFail 是否教學補償路徑（寫入訂單，後續 Confirm 會帶上）
      */
     public static TradeOrder pending(String orderId, String sagaId, String accountId, String symbol,
                                      String side, BigDecimal quantity, BigDecimal price, boolean forceFail) {
@@ -81,14 +87,16 @@ public class TradeOrder {
     }
 
     /**
-     * Saga 成功收尾。
+     * 【職責】Saga 成功收尾：PENDING → FILLED。
+     * 【使用】僅 {@code OrderSagaEventHandler.onConfirmed}；勿在補償路徑呼叫。
      */
     public void markFilled() {
         this.status = OrderStatus.FILLED;
     }
 
     /**
-     * 補償：標失敗（不碰帳戶庫）。
+     * 【職責】補償：標失敗（不碰帳戶庫）。
+     * 【使用】僅 {@code OrderMarkFailedAction.compensate}；帳戶還原靠 TCC Cancel。
      */
     public void markFailed() {
         this.status = OrderStatus.FAILED;

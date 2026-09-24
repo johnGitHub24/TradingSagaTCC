@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 
 /**
  * 【職責】帳戶查詢與練習重置；並實作 {@link AccountLookup} 給訂單側啟動前確認存在。
+ * 【使用】HTTP 經 {@link AccountController}；編排經 {@link AccountLookup#requireExists}。
  * 【邊界】唯讀查詢用 account TM；reset 只改帳戶庫。
  */
 @Service
@@ -22,14 +23,20 @@ public class AccountQueryService implements AccountLookup {
     private final AccountRepository accountRepository;
 
     /**
-     * @param accountRepository 帳戶庫
+     * 【職責】注入帳戶 Repository。
      */
     public AccountQueryService(AccountRepository accountRepository) {
         this.accountRepository = accountRepository;
     }
 
     /**
-     * {@inheritDoc}
+     * 【職責】帳戶必須存在，否則拋 404。
+     * 【使用】{@code SagaOrchestrator.start} 開頭呼叫；只讀帳戶庫（允許跨庫讀）。
+     * <pre>
+     * accountLookup.requireExists("ACC-001");
+     * </pre>
+     *
+     * @param accountId 帳戶代號
      */
     @Override
     @Transactional(value = "accountTransactionManager", readOnly = true)
@@ -38,6 +45,9 @@ public class AccountQueryService implements AccountLookup {
     }
 
     /**
+     * 【職責】查詢帳戶餘額 DTO。
+     * 【使用】Case ACCOUNT-001；前台顯示 available／frozen。
+     *
      * @param accountId 帳戶代號
      * @return DTO
      */
@@ -49,7 +59,11 @@ public class AccountQueryService implements AccountLookup {
     }
 
     /**
-     * 還原種子餘額，方便前台重跑劇情。
+     * 【職責】還原種子餘額，方便前台重跑劇情。
+     * 【使用】每輪 Demo／Smoke 前：
+     * <pre>
+     * accountQueryService.reset("ACC-001"); // available=100000, frozen=0
+     * </pre>
      *
      * @param accountId 帳戶代號
      * @return 重置後 DTO

@@ -19,17 +19,57 @@
     .top .links a { color: var(--accent); text-decoration: none; margin-right: 1rem; }
     .top .links a:hover { text-decoration: underline; }
     .tabs { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-    .tab { appearance: none; border: 1px solid var(--border); background: var(--surface); color: var(--muted); padding: 0.55rem 1.1rem; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 0.9rem; border-bottom: none; }
+    .tab { appearance: none; border: 1px solid var(--border); background: var(--surface); color: var(--muted); padding: 0.55rem 1.1rem; border-radius: 8px 8px 0 0; cursor: pointer; font-size: 0.85rem; border-bottom: none; }
     .tab:hover { color: var(--text); background: var(--surface2); }
     .tab.active { background: var(--bg); color: var(--accent2); border-color: var(--accent); box-shadow: inset 0 2px 0 var(--accent); }
-    main { padding: 1.5rem 2rem 3rem; max-width: 1100px; }
+    main { padding: 1.5rem 2rem 3rem; max-width: 1400px; }
     .panel { display: none; }
     .panel.active { display: block; }
     .panel h2 { font-size: 1.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.4rem; margin-bottom: 0.75rem; }
-    .blurb { color: #c9d4e3; font-size: 0.92rem; margin-bottom: 1rem; max-width: 52rem; }
+    .panel h3 { font-size: 1rem; color: var(--accent2); margin: 1.25rem 0 0.5rem; }
+    .blurb { color: #c9d4e3; font-size: 0.92rem; margin-bottom: 1rem; max-width: 60rem; }
     .blurb li { margin-left: 1.1rem; margin-bottom: 0.25rem; }
-    .mermaid { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; overflow-x: auto; }
-    .note { margin-top: 1rem; background: var(--surface2); border-left: 3px solid var(--warn); padding: 0.65rem 0.9rem; font-size: 0.85rem; color: var(--muted); }
+    .mermaid {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1.25rem; overflow-x: auto; overflow-y: hidden; margin-bottom: 0.75rem;
+    }
+    /* 禁止寬圖被壓進視窗變小；改橫向捲動看原尺寸 */
+    .mermaid svg {
+      width: auto !important;
+      max-width: none !important;
+      height: auto !important;
+      min-height: 280px;
+    }
+    .mermaid-scroll-hint {
+      font-size: 0.8rem; color: var(--muted); margin: -0.35rem 0 0.85rem;
+    }
+    .note { margin-top: 0.75rem; background: var(--surface2); border-left: 3px solid var(--warn); padding: 0.65rem 0.9rem; font-size: 0.85rem; color: var(--muted); }
+    .hotspot { margin-top: 0.5rem; font-size: 0.85rem; color: var(--accent2); }
+    table.role { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 0.75rem 0 1rem; }
+    table.role th, table.role td { border: 1px solid var(--border); padding: 0.45rem 0.6rem; text-align: left; vertical-align: top; }
+    table.role th { background: var(--surface2); color: var(--accent2); }
+    table.role code { color: #93c5fd; }
+    table.role.big { font-size: 1rem; }
+    table.role.big th, table.role.big td { padding: 0.75rem 0.9rem; line-height: 1.45; }
+    .case-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem 1.15rem; margin-bottom: 1rem;
+    }
+    .case-card h3 { margin: 0 0 0.75rem; font-size: 1.15rem; color: var(--accent2); border: none; }
+    .case-flow {
+      display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.4rem;
+      font-size: 1.05rem; line-height: 1.35;
+    }
+    .case-flow .step {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.65rem 0.85rem; min-width: 9.5rem; flex: 1 1 9.5rem;
+    }
+    .case-flow .step .lbl { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .case-flow .step code, .case-flow .step .val { color: #93c5fd; word-break: break-word; }
+    .case-flow .arrow {
+      align-self: center; color: var(--warn); font-size: 1.4rem; font-weight: 700;
+      padding: 0 0.15rem; flex: 0 0 auto;
+    }
     footer { padding: 0 2rem 2rem; color: var(--muted); font-size: 0.8rem; }
     @media (max-width: 700px) {
       .top, main, footer { padding-left: 1rem; padding-right: 1rem; }
@@ -40,133 +80,401 @@
 </head>
 <body>
   <header class="top">
-    <h1>TradingSagaTCC — CodeGraphic</h1>
-    <p class="sub">雙庫邊界 · Kafka Outbox · Saga／TCC／補償（非權威）</p>
+    <h1>TradingSagaTCC — CodeGraphic（詳細）</h1>
+    <p class="sub">元件角色 · method 全鏈 · 正向／負向 · Case→測試→Hotspot（非權威 VIEW）</p>
     <p class="links">
       <a href="../README.html">README</a>
       <a href="../TradingSagaTCC 規格書.html">規格書（權威）</a>
       <a href="architecture.html">architecture</a>
+      <a href="testing.html">testing</a>
     </p>
     <nav class="tabs" role="tablist" aria-label="CodeGraphic 章節">
-      <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="boundary">雙庫邊界</button>
-      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="saga">Saga 流程</button>
-      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="tcc">TCC／補償</button>
-      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="packages">套件地圖</button>
+      <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="roles">① 元件角色</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="happy">② 正向 method</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="neg">③ 負向 method</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="cases">④ Case／測試</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="boundary">⑤ 雙庫邊界</button>
     </nav>
   </header>
 
   <main>
-    <section id="panel-boundary" class="panel active" role="tabpanel">
-      <h2>雙庫邊界</h2>
+    <!-- ========== ROLES ========== -->
+    <section id="panel-roles" class="panel active" role="tabpanel">
+      <h2>① 程式元件角色</h2>
       <ul class="blurb">
-        <li>訂單庫只寫 order／saga／outbox；帳戶庫只寫 accounts／tcc_reservations。</li>
-        <li>Kafka 是唯一跨庫寫入橋；禁止 XA。</li>
-        <li>擴增獨立 consumer／relay 時這條邊界不變。</li>
+        <li>先認「誰負責什麼庫／什麼訊息」，再跟 method 鏈，效率最高。</li>
+        <li>編排者只寫訂單庫；TCC 只寫帳戶庫；Kafka 是唯一跨庫橋。</li>
+      </ul>
+      <table class="role">
+        <thead>
+          <tr><th>角色</th><th>Class</th><th>關鍵 function</th><th>一句話</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Entry UI</td><td><code>static/app.js</code></td><td><code>place</code> <code>pollSaga</code> <code>reportOutcome</code></td><td>啟動下單、輪詢終態、顯示 Saga＋訂單狀態</td></tr>
+          <tr><td>HTTP 入口</td><td><code>TradeController</code></td><td><code>place</code> <code>get</code> <code>getSaga</code></td><td>只轉 DTO→Service，不碰 Repository</td></tr>
+          <tr><td>編排起點</td><td><code>SagaOrchestrator</code></td><td><code>start</code></td><td>同 TX 寫訂單＋Saga＋Outbox command</td></tr>
+          <tr><td>帳戶存在檢查</td><td><code>AccountLookup</code></td><td><code>requireExists</code></td><td>啟動前只讀帳戶庫（允許）</td></tr>
+          <tr><td>Outbox 排程</td><td><code>OutboxRelayJob</code></td><td><code>tick</code></td><td>定時叫 Relay，本身不碰 Repository</td></tr>
+          <tr><td>Outbox 發送</td><td><code>OutboxPublisherService</code></td><td><code>append</code> <code>publishPending</code></td><td>先落庫再送 Kafka（提交後發訊）</td></tr>
+          <tr><td>Kafka 配線</td><td><code>SagaKafkaListeners</code></td><td><code>onCommand</code> <code>onEvent</code></td><td>command→帳戶；event→訂單編排</td></tr>
+          <tr><td>TCC 參與者</td><td><code>AccountCommandHandler</code></td><td><code>onMessage</code></td><td>解 command，呼叫 TCC，回 event</td></tr>
+          <tr><td>TCC 資金</td><td><code>AccountTccService</code></td><td><code>tryReserve</code> <code>confirm</code> <code>cancel</code></td><td>凍結／扣款／釋放（只帳戶庫）</td></tr>
+          <tr><td>帳戶聚合</td><td><code>Account</code></td><td><code>tryReserve</code> <code>confirm</code> <code>cancel</code></td><td>available／frozen 真正加減</td></tr>
+          <tr><td>編排推進</td><td><code>OrderSagaEventHandler</code></td><td><code>onMessage</code> <code>onReserved</code> <code>onConfirmed</code></td><td>聽 event：Confirm 命令或完成／轉補償</td></tr>
+          <tr><td>補償</td><td><code>OrderMarkFailedAction</code></td><td><code>compensate</code></td><td>訂單 FAILED、Saga COMPENSATED</td></tr>
+          <tr><td>查詢</td><td><code>TradeQueryService</code>／<code>AccountQueryService</code></td><td><code>getOrder</code> <code>getSaga</code> <code>get</code></td><td>唯讀；Demo／Smoke 用</td></tr>
+        </tbody>
+      </table>
+      <div class="mermaid">
+flowchart TB
+  subgraph entry [Entry]
+    UI["app.js place"]
+    TC["TradeController.place"]
+  end
+  subgraph orderSide [訂單庫角色]
+    SO["SagaOrchestrator.start"]
+    OX["OutboxPublisherService"]
+    JR["OutboxRelayJob.tick"]
+    OH["OrderSagaEventHandler"]
+    CP["OrderMarkFailedAction.compensate"]
+  end
+  subgraph bridge [跨庫橋]
+    KL["SagaKafkaListeners"]
+    K["Kafka commands/events"]
+  end
+  subgraph accountSide [帳戶庫角色]
+    AC["AccountCommandHandler.onMessage"]
+    TCC["AccountTccService"]
+    ACC["Account domain"]
+  end
+  UI --> TC --> SO
+  SO --> OX
+  JR --> OX
+  OX --> K
+  K --> KL
+  KL -->|onCommand| AC --> TCC --> ACC
+  AC --> K
+  KL -->|onEvent| OH
+  OH -->|成功| SO
+  OH -->|失敗| CP
+      </div>
+      <p class="note">學習順序建議：本 Tab → ② 正向 → ③ 負向 → ④ Case（對到測試檔再開 IDE）。</p>
+    </section>
+
+    <!-- ========== HAPPY ========== -->
+    <section id="panel-happy" class="panel" role="tabpanel" hidden>
+      <h2>② 正向作業 · method 全鏈（SAGA-001）</h2>
+      <ul class="blurb">
+        <li>拆成<strong>三階段短圖</strong>（少 participant），字才看得清。</li>
+        <li>成功語意：Saga <code>COMPLETED</code> ＋ 訂單 <code>FILLED</code> ＋ available 減少。</li>
+      </ul>
+      <p class="mermaid-scroll-hint">圖不縮小：左右捲動（Shift＋滾輪）。</p>
+
+      <h3>階段 A · HTTP 啟動＋Outbox 登記</h3>
+      <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant UI as app.js
+  participant TC as TradeController
+  participant SO as SagaOrchestrator
+  participant OX as OutboxPublisherService
+  UI->>TC: place(false) POST /trades
+  TC->>SO: start(TradeRequest)
+  SO->>SO: requireExists + TradeOrder.pending
+  SO->>SO: Saga ACCOUNT_TRYING
+  SO->>OX: append(RESERVE_FUNDS)
+  Note over SO,OX: 同一 order TX 提交 → 202 PENDING
+      </div>
+
+      <h3>階段 B · Try 凍結（Kafka command）</h3>
+      <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant JR as OutboxRelayJob
+  participant OX as OutboxPublisherService
+  participant KL as SagaKafkaListeners
+  participant AC as AccountCommandHandler
+  participant TCC as AccountTccService
+  participant Dom as Account
+  JR->>OX: tick → publishPending()
+  OX->>KL: onCommand RESERVE_FUNDS
+  KL->>AC: onMessage
+  AC->>TCC: tryReserve(sagaId, amount)
+  TCC->>Dom: tryReserve
+  Dom-->>TCC: available→frozen
+  TCC-->>AC: true
+  AC->>KL: publish FUNDS_RESERVED
+      </div>
+
+      <h3>階段 C · Confirm 扣款＋訂單完成</h3>
+      <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant KL as SagaKafkaListeners
+  participant OH as OrderSagaEventHandler
+  participant OX as OutboxPublisherService
+  participant AC as AccountCommandHandler
+  participant TCC as AccountTccService
+  participant Dom as Account
+  participant Ord as TradeOrder
+  KL->>OH: onEvent FUNDS_RESERVED → onReserved
+  OH->>OH: Saga ACCOUNT_CONFIRMING
+  OH->>OX: append(CONFIRM_FUNDS)
+  OX->>KL: onCommand
+  KL->>AC: onMessage
+  AC->>TCC: confirm(sagaId, false)
+  TCC->>Dom: confirm → 扣款
+  AC->>KL: FUNDS_CONFIRMED
+  KL->>OH: onConfirmed
+  OH->>Ord: markFilled()
+  OH->>OH: Saga COMPLETED
+  Note over OH,Ord: UI pollSaga → reportOutcome
+      </div>
+      <p class="hotspot">必盯窗口：<code>SagaOrchestrator.start</code> · <code>AccountTccService.confirm</code> · <code>OrderSagaEventHandler.onConfirmed</code></p>
+      <p class="note">Fixture：<code>docs/test-data/trade/SAGA-001-SUCCESS.json</code></p>
+    </section>
+
+    <!-- ========== NEG ========== -->
+    <section id="panel-neg" class="panel" role="tabpanel" hidden>
+      <h2>③ 負向／補償 · method 全鏈</h2>
+      <ul class="blurb">
+        <li>兩條失敗路共用 <code>OrderMarkFailedAction.compensate</code>。</li>
+        <li>終態：訂單 <code>FAILED</code> ＋ Saga <code>COMPENSATED</code>。</li>
+      </ul>
+      <p class="mermaid-scroll-hint">圖不縮小：左右捲動即可。</p>
+
+      <h3>SAGA-002 · 餘額不足（Try 失敗）</h3>
+      <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant UI as app.js
+  participant SO as SagaOrchestrator
+  participant AC as AccountCommandHandler
+  participant TCC as AccountTccService
+  participant OH as OrderSagaEventHandler
+  participant CP as OrderMarkFailedAction
+  UI->>SO: start 1x999999
+  SO->>AC: RESERVE_FUNDS via Outbox/Kafka
+  AC->>TCC: tryReserve
+  TCC-->>AC: false 不足
+  AC->>OH: FUNDS_FAILED
+  OH->>CP: compensate(sagaId)
+  CP->>CP: markFailed + COMPENSATED
+  Note over TCC: 從未凍結，餘額不變
+      </div>
+      <p class="hotspot">窗口：<code>tryReserve</code> → <code>compensate</code> · Fixture <code>SAGA-002-INSUFFICIENT.json</code></p>
+
+      <h3>TCC-002 · forceFail（Try 後 Cancel）</h3>
+      <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant UI as app.js
+  participant AC as AccountCommandHandler
+  participant TCC as AccountTccService
+  participant Dom as Account
+  participant OH as OrderSagaEventHandler
+  participant CP as OrderMarkFailedAction
+  UI->>AC: RESERVE then CONFIRM forceFail=true
+  AC->>TCC: tryReserve → true
+  TCC->>Dom: 凍結
+  AC->>OH: FUNDS_RESERVED
+  OH->>AC: CONFIRM_FUNDS
+  AC->>TCC: confirm(true)
+  TCC->>TCC: cancel(sagaId)
+  TCC->>Dom: 凍結還回 available
+  AC->>OH: FUNDS_CANCELLED
+  OH->>CP: compensate
+  CP->>CP: order FAILED / saga COMPENSATED
+      </div>
+      <p class="hotspot">窗口：<code>confirm(forceFail)</code> → <code>cancel</code> → <code>compensate</code> · Fixture <code>TCC-002-FORCE-FAIL.json</code></p>
+      <p class="note">兩條負向都不會走到 <code>onConfirmed</code>／<code>markFilled</code>。</p>
+    </section>
+
+    <!-- ========== CASES ========== -->
+    <section id="panel-cases" class="panel" role="tabpanel" hidden>
+      <h2>④ 測試案例 → fixture → method → 測試檔</h2>
+      <ul class="blurb">
+        <li>每個 Case 一張<strong>大卡片流程</strong>（不再塞進一張會縮成指甲的 Mermaid）。</li>
+        <li>選 Case → 只開 Hotspot method＋單元／整合測試，勿全倉搜。</li>
+      </ul>
+
+      <div class="case-card">
+        <h3>SAGA-001 · 成功扣款</h3>
+        <div class="case-flow">
+          <div class="step"><span class="lbl">1 · Fixture</span><code>docs/test-data/trade/SAGA-001-SUCCESS.json</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">2 · Method</span><code>start</code> → <code>tryReserve</code> → <code>confirm</code> → <code>onConfirmed</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">3 · 單元</span><code>SagaOrchestratorTest</code><br/><code>AccountTccServiceTest</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">4 · 整合</span><code>TradeSagaIntegrationTest.happyPath_filled</code></div>
+        </div>
+      </div>
+
+      <div class="case-card">
+        <h3>SAGA-002 · 餘額不足</h3>
+        <div class="case-flow">
+          <div class="step"><span class="lbl">1 · Fixture</span><code>trade/SAGA-002-INSUFFICIENT.json</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">2 · Method</span><code>tryReserve</code>（false）→ <code>compensate</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">3 · 單元</span><code>AccountTccServiceTest</code><br/><code>OrderMarkFailedActionTest</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">4 · 整合</span><code>insufficient_compensated</code></div>
+        </div>
+      </div>
+
+      <div class="case-card">
+        <h3>TCC-002 · forceFail 補償</h3>
+        <div class="case-flow">
+          <div class="step"><span class="lbl">1 · Fixture</span><code>trade/TCC-002-FORCE-FAIL.json</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">2 · Method</span><code>confirm(true)</code> → <code>cancel</code> → <code>compensate</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">3 · 單元</span><code>AccountTccServiceTest.confirm_forceFail_cancels</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">4 · 整合</span><code>forceFail_compensated</code></div>
+        </div>
+      </div>
+
+      <div class="case-card">
+        <h3>OUTBOX-001 · Outbox 發訊</h3>
+        <div class="case-flow">
+          <div class="step"><span class="lbl">1 · Fixture</span><code>trade/OUTBOX-001-RESERVE.json</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">2 · Method</span><code>append</code> → <code>publishPending</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">3 · 單元</span><code>OutboxPublisherServiceTest</code><br/><code>SagaOrchestratorTest</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">4 · 整合</span><code>outbox_reachesKafkaTrail</code></div>
+        </div>
+      </div>
+
+      <div class="case-card">
+        <h3>TRADE-001 · 未知訂單 404</h3>
+        <div class="case-flow">
+          <div class="step"><span class="lbl">1 · Fixture</span><span class="val">無 body（GET path）</span></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">2 · Method</span><code>TradeQueryService.getOrder</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">3 · 單元</span><code>TradeQueryServiceTest</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">4 · 整合</span><code>getUnknownOrder_404</code></div>
+        </div>
+      </div>
+
+      <div class="case-card">
+        <h3>ACCOUNT-001 · 種子帳戶</h3>
+        <div class="case-flow">
+          <div class="step"><span class="lbl">1 · Fixture</span><code>account/ACCOUNT-001-SEED.json</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">2 · Method</span><code>AccountQueryService.get</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">3 · 單元</span><code>AccountQueryServiceTest</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">4 · 整合</span><code>getAccount_seed_200</code></div>
+        </div>
+      </div>
+
+      <h3>總表（可捲動複製）</h3>
+      <table class="role big">
+        <thead>
+          <tr><th>Case</th><th>Fixture</th><th>Hotspot function</th><th>單元測試</th><th>整合方法</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>SAGA-001</strong></td>
+            <td><code>trade/SAGA-001-SUCCESS.json</code></td>
+            <td><code>start</code> <code>confirm</code> <code>onConfirmed</code></td>
+            <td><code>SagaOrchestratorTest</code><br/><code>AccountTccServiceTest</code></td>
+            <td><code>happyPath_filled</code></td>
+          </tr>
+          <tr>
+            <td><strong>SAGA-002</strong></td>
+            <td><code>trade/SAGA-002-INSUFFICIENT.json</code></td>
+            <td><code>tryReserve</code> <code>compensate</code></td>
+            <td><code>AccountTccServiceTest</code><br/><code>OrderMarkFailedActionTest</code></td>
+            <td><code>insufficient_compensated</code></td>
+          </tr>
+          <tr>
+            <td><strong>TCC-002</strong></td>
+            <td><code>trade/TCC-002-FORCE-FAIL.json</code></td>
+            <td><code>confirm(true)</code> <code>cancel</code> <code>compensate</code></td>
+            <td><code>AccountTccServiceTest</code></td>
+            <td><code>forceFail_compensated</code></td>
+          </tr>
+          <tr>
+            <td><strong>OUTBOX-001</strong></td>
+            <td><code>trade/OUTBOX-001-RESERVE.json</code></td>
+            <td><code>append</code> <code>publishPending</code></td>
+            <td><code>OutboxPublisherServiceTest</code><br/><code>SagaOrchestratorTest</code></td>
+            <td><code>outbox_reachesKafkaTrail</code></td>
+          </tr>
+          <tr>
+            <td><strong>TRADE-001</strong></td>
+            <td>—</td>
+            <td><code>getOrder</code></td>
+            <td><code>TradeQueryServiceTest</code></td>
+            <td><code>getUnknownOrder_404</code></td>
+          </tr>
+          <tr>
+            <td><strong>ACCOUNT-001</strong></td>
+            <td><code>account/ACCOUNT-001-SEED.json</code></td>
+            <td><code>get</code></td>
+            <td><code>AccountQueryServiceTest</code></td>
+            <td><code>getAccount_seed_200</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="hotspot">L1 Smoke：SAGA-001／002、TCC-002、TRADE-001（見 <code>docs/testing.md</code>）。</p>
+      <p class="note">契約變 → fixture JSON＋單元＋整合＋本 Tab 成對更新。六 Case 擠在一張 Mermaid 會被 SVG 縮到看不清，故改卡片＋大表。</p>
+    </section>
+
+    <!-- ========== BOUNDARY ========== -->
+    <section id="panel-boundary" class="panel" role="tabpanel" hidden>
+      <h2>⑤ 雙庫邊界／訊息拓樸</h2>
+      <ul class="blurb">
+        <li>訂單庫：order／saga／outbox。帳戶庫：accounts／tcc_reservations。</li>
+        <li>禁止 XA；跨庫只經 Kafka command／event。</li>
       </ul>
       <div class="mermaid">
 flowchart LR
-  UI["Vue :8093"] --> API["TradeController"]
-  API --> ODB["orderdb"]
+  UI["Vue app.js"] --> TC["TradeController.place"]
+  TC --> SO["SagaOrchestrator.start"]
+  SO --> ODB[(orderdb)]
   ODB --> OX["outbox_events"]
-  OX --> K["Kafka"]
-  K --> ADB["accountdb TCC"]
-  ADB --> K
-  K --> ODB
+  OX -->|"publishPending"| CMD["topic commands"]
+  CMD --> AC["AccountCommandHandler"]
+  AC --> ADB[(accountdb)]
+  AC -->|"FUNDS_*"| EVT["topic events"]
+  EVT --> OH["OrderSagaEventHandler"]
+  OH --> ODB
+  OH -.->|失敗| CP["OrderMarkFailedAction"]
+  CP --> ODB
       </div>
-      <p class="note">啟動前可讀帳戶是否存在；不得在同一 JDBC 交易寫兩庫。</p>
-    </section>
-
-    <section id="panel-saga" class="panel" role="tabpanel" hidden>
-      <h2>Saga 流程</h2>
-      <ul class="blurb">
-        <li>HTTP 202：訂單 PENDING + Outbox RESERVE_FUNDS。</li>
-        <li>帳戶 Try 成功後編排再發 CONFIRM_FUNDS。</li>
-        <li>FUNDS_CONFIRMED → 訂單 FILLED／Saga COMPLETED。</li>
-      </ul>
-      <div class="mermaid">
-sequenceDiagram
-  participant C as Client
-  participant O as Order DB
-  participant K as Kafka
-  participant A as Account TCC
-  C->>O: POST trades
-  O->>K: RESERVE_FUNDS
-  K->>A: Try
-  A->>K: FUNDS_RESERVED
-  K->>O: CONFIRM commanded
-  O->>K: CONFIRM_FUNDS
-  K->>A: Confirm
-  A->>K: FUNDS_CONFIRMED
-  K->>O: FILLED
-      </div>
-      <p class="note">編排狀態在訂單庫；帳戶不寫 saga_instances。</p>
-    </section>
-
-    <section id="panel-tcc" class="panel" role="tabpanel" hidden>
-      <h2>TCC／補償</h2>
-      <ul class="blurb">
-        <li>Try：available → frozen。</li>
-        <li>Confirm：吃掉 frozen；Cancel：frozen 還回 available。</li>
-        <li>forceFail 或餘額不足：帳戶 Cancel／不扣款，訂單補償 FAILED。</li>
-      </ul>
-      <div class="mermaid">
-stateDiagram-v2
-  [*] --> TRYING: Try
-  TRYING --> CONFIRMED: Confirm
-  TRYING --> CANCELLED: Cancel
-  CONFIRMED --> [*]
-  CANCELLED --> [*]
-      </div>
-      <p class="note">TCC 管單資源兩階段；Saga 管跨資源順序與補償。</p>
-    </section>
-
-    <section id="panel-packages" class="panel" role="tabpanel" hidden>
-      <h2>套件地圖</h2>
-      <ul class="blurb">
-        <li>order／account 各有 domain + infrastructure。</li>
-        <li>saga 編排與補償；messaging 接 Kafka。</li>
-        <li>expansion 四介面預留給拆進程。</li>
-      </ul>
-      <div class="mermaid">
-flowchart TB
-  subgraph api [HTTP]
-    TC[TradeController]
-    AC[AccountController]
-  end
-  subgraph app [Service]
-    SO[SagaOrchestrator]
-    TCC[AccountTccService]
-    CP[OrderMarkFailedAction]
-  end
-  subgraph exp [expansion]
-    TR[TccResource]
-    CA[CompensationAction]
-    OR[OutboxRelay]
-    DC[DomainEventConsumer]
-  end
-  TC --> SO
-  SO --> OR
-  AC --> TCC
-  TCC --> TR
-  CP --> CA
-  DC --> TCC
-      </div>
-      <p class="note">新增庫存參與者：實作 TccResource，不要把庫存表塞進訂單庫。</p>
+      <p class="note">擴增獨立 consumer／relay 時換部署即可，這張邊界不變（expansion 四介面）。</p>
     </section>
   </main>
 
-  <footer>CodeGraphic · 非權威 · 衝突以規格書為準 · Mermaid CDN · eos-minimal</footer>
+  <footer>CodeGraphic 詳細版 · 非權威 · 衝突以規格書為準 · EOS documentation.md §流程案例圖</footer>
 
   <script>
-    mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "loose" });
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: "dark",
+      securityLevel: "loose",
+      themeVariables: { fontSize: "16px" },
+      sequence: { actorMargin: 28, messageMargin: 36, mirrorActors: false }
+    });
     const tabs = document.querySelectorAll(".tab");
     const panels = {
-      "boundary": document.getElementById("panel-boundary"),
-      "saga": document.getElementById("panel-saga"),
-      "tcc": document.getElementById("panel-tcc"),
-      "packages": document.getElementById("panel-packages")
+      "roles": document.getElementById("panel-roles"),
+      "happy": document.getElementById("panel-happy"),
+      "neg": document.getElementById("panel-neg"),
+      "cases": document.getElementById("panel-cases"),
+      "boundary": document.getElementById("panel-boundary")
     };
-    const firstId = "boundary";
+    const firstId = "roles";
     const rendered = new Set([firstId]);
     async function renderPanel(id) {
       if (rendered.has(id)) return;

@@ -1,0 +1,9 @@
+{
+  "description": "TCC-002 故意失敗 — forceFail=true，Try 後 Cancel，預期 COMPENSATED／餘額還原",
+  "accountId": "ACC-001",
+  "symbol": "BTCUSDT",
+  "side": "BUY",
+  "quantity": 1,
+  "price": 10000,
+  "forceFail": true
+}

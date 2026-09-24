@@ -11,22 +11,35 @@
 
 `gradlew check`＝`test`（排除 `@Tag integration`）+ `integrationTest`。Performance：N/A。
 
+## Fixture（texture · JSON）
+
+路徑：`docs/test-data/{domain}/{CASE}.json`；載入器：`SagaTestFixtures`。
+
+| Case | JSON | 用途 |
+|------|------|------|
+| SAGA-001 | `trade/SAGA-001-SUCCESS.json` | Happy Path body |
+| SAGA-002 | `trade/SAGA-002-INSUFFICIENT.json` | 餘額不足 body |
+| TCC-002 | `trade/TCC-002-FORCE-FAIL.json` | forceFail body |
+| OUTBOX-001 | `trade/OUTBOX-001-RESERVE.json` | Outbox 軌跡 |
+| ACCOUNT-001 | `account/ACCOUNT-001-SEED.json` | 種子餘額期望 |
+| TRADE-001 | （無 body；GET 404） | 未知訂單 |
+
 ## Case（單元 ↔ 整合成對）
 
 | Case | 單元 | 整合 |
 |------|------|------|
-| SAGA-001 | `SagaOrchestratorTest`、`AccountTest` Try-Confirm、`AccountTccServiceTest` confirm | POST 1×10000 → COMPLETED／available 90000 |
-| SAGA-002 | `AccountTest` 不足、`AccountTccServiceTest` false、`OrderMarkFailedActionTest` | POST 1×999999 → COMPENSATED／餘額不變 |
-| TCC-002 | `AccountTest` Try-Cancel、`AccountTccServiceTest` forceFail | `forceFail=true` → COMPENSATED／餘額還原 |
+| SAGA-001 | `SagaOrchestratorTest`、`AccountTest` Try-Confirm、`AccountTccServiceTest` confirm | POST fixture → COMPLETED／available 90000 |
+| SAGA-002 | `AccountTest` 不足、`AccountTccServiceTest` false、`OrderMarkFailedActionTest` | POST fixture → COMPENSATED／餘額不變 |
+| TCC-002 | `AccountTest` Try-Cancel、`AccountTccServiceTest` forceFail | forceFail fixture → COMPENSATED／餘額還原 |
 | TRADE-001 | `TradeQueryServiceTest`、`GlobalExceptionHandlerTest` | GET 未知訂單 404 |
-| ACCOUNT-001 | `AccountQueryServiceTest` | GET ACC-001 200 |
+| ACCOUNT-001 | `AccountQueryServiceTest` | GET ACC-001 200（對照 seed JSON） |
 | OUTBOX-001 | `OutboxPublisherServiceTest`、`SagaOrchestratorTest` | events 含 `RESERVE_FUNDS` |
 
 ## DoD
 
 - [x] 每個公開 Service 行為有單元測
 - [x] 每個對外 API Happy + 錯誤路徑（404）
-- [x] 契約成對、禁止單邊
+- [x] 契約成對、禁止單邊；Happy Path 用外部 JSON fixture
 - [x] `.\scripts\check.ps1` 綠
 - [x] Runtime Smoke L1（API + 可選 UI）
 
@@ -41,7 +54,8 @@
 | `docs/run-release-gate.ps1` | Release 閘 | 可選 | `check` 綠 + `ALL_RELEASE_GATE_OK`（含 L1） |
 
 **Release 建議：** `bootRun` → `.\docs\run-release-gate.ps1`（`-SkipSmoke` 僅 check；`-SkipUi` 僅 API L1）。  
-**Graph 路由：** `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`）。
+**Graph 路由：** `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`）。  
+**流程案例圖／Hotspot：** `docs/codeGraphic.html`（正向／負向／Case→窗口）；原則見 EOS `documentation.md` §流程案例圖。
 
 **L1 劇情（API／UI 共用）：** SAGA-001／002、TCC-002、TRADE-001。人看：`http://localhost:8093/test/runner.html`。
 

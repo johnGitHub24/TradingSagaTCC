@@ -13,6 +13,7 @@ import com.trading.saga.order.dto.TradeResponse;
 import com.trading.saga.order.infrastructure.SagaInstanceRepository;
 import com.trading.saga.order.infrastructure.SagaStepRepository;
 import com.trading.saga.order.infrastructure.TradeOrderRepository;
+import com.trading.saga.support.SagaTestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,8 +21,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -31,6 +30,7 @@ import static org.mockito.Mockito.verify;
 
 /**
  * 【職責】{@link SagaOrchestrator} 單元層：SAGA-001／OUTBOX-001 同一契約（寫 Outbox RESERVE_FUNDS）。
+ * 【技巧】Request 來自 {@code docs/test-data/trade/SAGA-001-SUCCESS.json}。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("SagaOrchestrator unit")
@@ -61,9 +61,7 @@ class SagaOrchestratorTest {
     @Test
     @DisplayName("SAGA-001 / OUTBOX-001: start appends RESERVE_FUNDS outbox and returns PENDING")
     void start_appendsReserveCommand() {
-        TradeRequest request = new TradeRequest(
-                "ACC-001", "BTCUSDT", "BUY",
-                BigDecimal.ONE, new BigDecimal("10000"), false);
+        TradeRequest request = SagaTestFixtures.loadDto("trade", "SAGA-001-SUCCESS", TradeRequest.class);
 
         TradeResponse response = orchestrator.start(request);
 
