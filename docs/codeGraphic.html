@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TradingSagaTCC — CodeGraphic</title>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
   <style>
     :root {
       --bg: #0f1419; --surface: #1a2332; --surface2: #243044; --border: #2d3a4f;
@@ -71,6 +72,46 @@
       padding: 0 0.15rem; flex: 0 0 auto;
     }
     footer { padding: 0 2rem 2rem; color: var(--muted); font-size: 0.8rem; }
+
+    /* ⑥ 文件：內嵌 Markdown 閱讀器 */
+    .doc-layout { display: grid; grid-template-columns: 230px 1fr; gap: 1.25rem; }
+    .doc-nav { position: sticky; top: 1rem; align-self: start; display: flex; flex-direction: column; gap: 0.35rem; }
+    .doc-nav .grp { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0.6rem 0 0.1rem; }
+    .doc-nav button {
+      appearance: none; text-align: left; border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); padding: 0.5rem 0.75rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem;
+    }
+    .doc-nav button:hover { color: var(--text); background: var(--surface2); }
+    .doc-nav button.active { color: var(--accent2); border-color: var(--accent); background: var(--bg); }
+    .doc-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.6rem; }
+    .doc-meta code { color: #93c5fd; }
+    .doc-body { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem 1.75rem; max-width: 1150px; overflow-x: auto; }
+    .doc-body h1 { font-size: 1.5rem; margin: 0 0 0.75rem; border: none; }
+    .doc-body h2 { font-size: 1.25rem; border-bottom: 1px solid var(--border); margin: 1.6rem 0 0.6rem; padding-bottom: 0.3rem; }
+    .doc-body h3 { font-size: 1.05rem; color: var(--accent2); margin: 1.2rem 0 0.5rem; }
+    .doc-body h4 { font-size: 0.95rem; margin: 1rem 0 0.4rem; }
+    .doc-body p, .doc-body ul, .doc-body ol, .doc-body table, .doc-body pre, .doc-body blockquote, .doc-body details { margin: 0.6rem 0; }
+    .doc-body ul, .doc-body ol { padding-left: 1.5rem; }
+    .doc-body li { margin: 0.2rem 0; }
+    .doc-body table { border-collapse: collapse; font-size: 0.88rem; display: block; overflow-x: auto; max-width: 100%; }
+    .doc-body th, .doc-body td { border: 1px solid var(--border); padding: 0.4rem 0.6rem; vertical-align: top; text-align: left; }
+    .doc-body th { background: var(--surface2); color: var(--accent2); }
+    .doc-body code { background: var(--surface2); padding: 0.1rem 0.35rem; border-radius: 4px; color: #93c5fd; font-size: 0.9em; }
+    .doc-body pre { background: #0b1017; border: 1px solid var(--border); border-radius: 8px; padding: 0.9rem 1rem; overflow-x: auto; }
+    .doc-body pre code { background: none; padding: 0; color: var(--text); }
+    .doc-body blockquote { border-left: 3px solid var(--warn); background: var(--surface2); padding: 0.5rem 0.9rem; color: var(--muted); }
+    .doc-body a { color: var(--accent); }
+    .doc-body a.doc-external::after { content: " ↗"; font-size: 0.75em; color: var(--muted); }
+    .doc-body hr { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+    .doc-body summary { cursor: pointer; color: var(--muted); }
+    .doc-body .mermaid svg { min-height: 0; }
+    .doc-error { color: #fca5a5; }
+
+    @media (max-width: 900px) {
+      .doc-layout { grid-template-columns: 1fr; }
+      .doc-nav { position: static; flex-direction: row; flex-wrap: wrap; }
+      .doc-nav .grp { width: 100%; }
+    }
     @media (max-width: 700px) {
       .top, main, footer { padding-left: 1rem; padding-right: 1rem; }
       .tab { flex: 1 1 auto; border-radius: 8px; border-bottom: 1px solid var(--border); }
@@ -83,10 +124,11 @@
     <h1>TradingSagaTCC — CodeGraphic（詳細）</h1>
     <p class="sub">元件角色 · method 全鏈 · 正向／負向 · Case→測試→Hotspot（非權威 VIEW）</p>
     <p class="links">
-      <a href="../README.html">README</a>
-      <a href="../TradingSagaTCC 規格書.html">規格書（權威）</a>
-      <a href="architecture.html">architecture</a>
-      <a href="testing.html">testing</a>
+      <a href="#doc=readme" data-open-doc="readme">README</a>
+      <a href="#doc=spec" data-open-doc="spec">規格書（權威）</a>
+      <a href="#doc=architecture" data-open-doc="architecture">architecture</a>
+      <a href="#doc=testing" data-open-doc="testing">testing</a>
+      <a href="#doc=states" data-open-doc="states">狀態對照</a>
     </p>
     <nav class="tabs" role="tablist" aria-label="CodeGraphic 章節">
       <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="roles">① 元件角色</button>
@@ -94,6 +136,7 @@
       <button type="button" class="tab" role="tab" aria-selected="false" data-tab="neg">③ 負向 method</button>
       <button type="button" class="tab" role="tab" aria-selected="false" data-tab="cases">④ Case／測試</button>
       <button type="button" class="tab" role="tab" aria-selected="false" data-tab="boundary">⑤ 雙庫邊界</button>
+      <button type="button" class="tab" role="tab" aria-selected="false" data-tab="docs">⑥ 文件</button>
     </nav>
   </header>
 
@@ -454,7 +497,1013 @@ flowchart LR
       </div>
       <p class="note">擴增獨立 consumer／relay 時換部署即可，這張邊界不變（expansion 四介面）。</p>
     </section>
+
+    <!-- ========== DOCS ========== -->
+    <section id="panel-docs" class="panel" role="tabpanel" hidden>
+      <h2>⑥ 文件（內嵌閱讀）</h2>
+      <p class="blurb">直接用 <code>file://</code> 開本頁也能讀。權威仍是各 <code>.md</code>；改完 md 後執行 <code>.\docs\sync-codegraphic-docs.ps1</code> 重新嵌入。</p>
+      <div class="doc-layout">
+        <nav class="doc-nav" aria-label="文件清單">
+          <div class="grp">入口與契約</div>
+          <button type="button" data-doc-btn="readme">README</button>
+          <button type="button" data-doc-btn="spec">規格書（權威）</button>
+          <button type="button" data-doc-btn="api">API 規格書</button>
+          <div class="grp">設計</div>
+          <button type="button" data-doc-btn="architecture">architecture</button>
+          <button type="button" data-doc-btn="database">資料庫設計</button>
+          <button type="button" data-doc-btn="testing">testing</button>
+          <div class="grp">學習敘述</div>
+          <button type="button" data-doc-btn="states">狀態對照：Saga／TCC／訂單</button>
+          <button type="button" data-doc-btn="outbox">Outbox 發件匣</button>
+        </nav>
+        <div>
+          <p class="doc-meta" id="doc-meta"></p>
+          <article class="doc-body" id="doc-body"></article>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <!--
+    內嵌 Markdown：內容由 docs/sync-codegraphic-docs.ps1 依 data-src 重新產生，勿手改區塊內文。
+    新增文件：複製一個 script 區塊（data-doc 唯一、data-src 相對本檔），並在 .doc-nav 加按鈕，再跑同步腳本。
+  -->
+  <script type="text/markdown" data-doc="readme" data-src="../README.md">
+# TradingSagaTCC
+
+練習 **Saga／TCC／補償**：雙 H2 邊界 + Kafka Outbox + 同埠 Vue 前台。
+
+## 文件入口
+
+單一入口：本 README。衝突以主規格為準。
+
+| 文件 | 說明 |
+|------|------|
+| [TradingSagaTCC 規格書.md](TradingSagaTCC%20規格書.md) | **主規格書（權威）** |
+| [API規格書.md](API規格書.md) | API 端點、錯誤碼 |
+| [docs/architecture.md](docs/architecture.md) | 分層與雙庫／Kafka／Outbox 摘要 |
+| [docs/outbox-發件匣.md](docs/outbox-發件匣.md) | **Outbox＝發件匣** 中文敘述與元件對照 |
+| [docs/狀態對照-Saga-TCC-訂單.md](docs/狀態對照-Saga-TCC-訂單.md) | **Saga／預留票／訂單** 三組狀態差異與逐步對照 |
+| [docs/codeGraphic.html](docs/codeGraphic.html) | Tab 式架構圖：**正向／負向／Case→Hotspot**（非權威） |
+| [docs/swagger.html](docs/swagger.html) | API（Swagger UI） |
+| [docs/testing.md](docs/testing.md) | Case／check／DoD／**Runtime Smoke L0～L1** |
+| [docs/graph-routing.md](docs/graph-routing.md) | **最小 Graph**（單 Agent N/A；Release 編排） |
+| [docs/資料庫設計.md](docs/資料庫設計.md) | 雙庫表 |
+| [CLAUDE.md](CLAUDE.md) | AI／工程薄規則（繼承 EOS） |
+| [scripts/README.md](scripts/README.md) | Pure 驗證腳本 |
+
+## Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Vue 3 ESM（靜態，同埠 :8093） |
+| Backend | Spring Boot 3.2.2 · Java 21 · 雙 JPA DataSource |
+| Messaging | Spring Kafka（內嵌 broker） |
+| DB | H2 `orderdb` + `accountdb` |
+| Build | Gradle 8.5 · JDK 21 |
+
+## Quick Start
+
+```powershell
+.\scripts\check.ps1
+.\gradlew.bat bootRun
+```
+
+瀏覽器開 **http://localhost:8093/**：
+
+1. **成功路徑** — 扣款 10000
+2. **餘額不足** — Saga 補償，餘額不變
+3. **故意失敗** — TCC Cancel，餘額還原
+
+IntelliJ：Gradle `bootRun`（**不要**對 `TradingSagaTccApplication` 綠箭頭）。
+
+| URL | 說明 |
+|-----|------|
+| http://localhost:8093/ | 練習前台 |
+| http://localhost:8093/test/runner.html | L1 UI Smoke（RUN TESTING） |
+| http://localhost:8093/swagger-ui.html | OpenAPI |
+| http://localhost:8093/h2-console | H2（先連 order JDBC，再改連 account） |
+| http://localhost:8093/actuator/health | 健康檢查 |
+
+H2 JDBC：
+
+- 訂單庫 `jdbc:h2:mem:orderdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE`
+- 帳戶庫 `jdbc:h2:mem:accountdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE`
+- 帳號 `sa`、密碼空白
+
+## 練習技能
+
+- 編排式 Saga（訂單庫擁有流程狀態）
+- TCC Try-Confirm-Cancel（帳戶庫資金凍結）
+- 補償（訂單 FAILED，凍結釋放）
+- Outbox → Kafka command／event
+- 雙庫邊界（禁止 XA）
+
+## 驗證
+
+`.\scripts\check.ps1`（unit + integration）。Runtime Smoke L0～L1、Case 表、證據欄 → [docs/testing.md](docs/testing.md)（教學見 EOS `demo-ready-guide.md`）。
+</script>
+  <script type="text/markdown" data-doc="spec" data-src="../TradingSagaTCC 規格書.md">
+# TradingSagaTCC 規格書（權威）
+
+練習主題：**Saga／TCC／補償**（Kafka 當跨庫訊息橋）。  
+衝突以此檔為準。EngineeringOS eos-minimal @ **0.1.13**。
+
+## 1. 一句話
+
+單一 JVM 模擬 **訂單庫** 與 **帳戶庫** 兩條交易邊界；用 Kafka + Outbox 串起編排式 Saga，帳戶資金走 **TCC（Try-Confirm-Cancel）**，失敗則 **補償** 訂單並釋放凍結。
+
+## 2. 範圍 / 非範圍
+
+### 做（簡單可運作）
+
+- 雙 H2：`orderdb`／`accountdb`，禁止 XA／單事務跨庫寫入
+- 本機 **內嵌 Kafka**（`bootRun` 不必 Docker）
+- 訂單庫 Outbox → Kafka command；帳戶 Consumer 做 TCC；事件回訂單庫完成或補償
+- 靜態 Vue 前台與後端同埠（`:8093`），可練成功／餘額不足／故意失敗三條劇情
+- 單元＋整合成對 Case；驗證入口 `.\scripts\check.ps1`
+
+### 不做（本版）
+
+- Seata／獨立微服務進程／真實券商撮合
+- 獨立 Outbox Relay 進程、獨立 Consumer 部署
+- 認證／RBAC（N/A → 無 `docs/驗證設計.md`）
+- Performance Gate（N/A）
+
+### 預留擴增（契約先留，雙庫邊界不變）
+
+| 擴增點 | 介面 | 本版行為 |
+|--------|------|----------|
+| 新 TCC 參與者（庫存等） | `TccResource` | 僅帳戶實作 |
+| 新補償動作 | `CompensationAction` | 僅「訂單標失敗」 |
+| 獨立 Outbox Relay | `OutboxRelay` | 同 JVM `@Scheduled` 輪詢 |
+| 獨立 Consumer | `DomainEventConsumer` | 同 JVM `@KafkaListener` |
+| 外接 Kafka | `trading.kafka.embedded=false` | 改 `bootstrap-servers` |
+
+擴增時 **不得** 讓訂單 Service 寫帳戶表，也 **不得** 讓帳戶 Service 寫訂單表。
+
+## 3. 劇情（SDD）
+
+種子帳戶 `ACC-001`：available **100000**，frozen **0**。
+
+| 劇情 | 操作 | 終態 |
+|------|------|------|
+| 成功 | BUY 1 × 10000 | 訂單 `FILLED`，Saga `COMPLETED`，available 90000 |
+| 餘額不足 | BUY 1 × 999999 | 訂單 `FAILED`，Saga `COMPENSATED`，帳戶不變 |
+| 故意失敗（練補償） | `forceFail=true`、金額合法 | Try 成功後 Confirm 改 Cancel；訂單 `FAILED`，Saga `COMPENSATED`，帳戶還原 |
+
+HTTP：請求合法即 **202**（Saga 已建）；終態靠輪詢 `GET /api/v1/sagas/{sagaId}`。語法／欄位錯 **422**；資源不存在 **404**。
+
+## 4. 狀態
+
+**訂單** `PENDING` → `FILLED`｜`FAILED`  
+**Saga** `STARTED` → `ACCOUNT_TRYING` → `ACCOUNT_CONFIRMING` → `COMPLETED`  
+失敗：`ACCOUNT_TRYING`／`ACCOUNT_CONFIRMING` → `COMPENSATING` → `COMPENSATED`  
+**TCC 預留** `TRYING` → `CONFIRMED`｜`CANCELLED`（Try／Cancel 須冪等）
+
+## 5. Kafka
+
+| Topic | 方向 |
+|-------|------|
+| `trading.saga.commands` | 訂單 Outbox → 帳戶：`RESERVE_FUNDS`／`CONFIRM_FUNDS`／`CANCEL_FUNDS` |
+| `trading.saga.events` | 帳戶 → 訂單：`FUNDS_RESERVED`／`FUNDS_CONFIRMED`／`FUNDS_FAILED`／`FUNDS_CANCELLED` |
+
+## 6. API（摘要）
+
+權威細節見 [API規格書.md](API規格書.md)。
+
+| Method | Path | 說明 |
+|--------|------|------|
+| POST | `/api/v1/trades` | 啟動 Saga（202） |
+| GET | `/api/v1/trades` | 訂單列表 |
+| GET | `/api/v1/trades/{orderId}` | 單筆 |
+| GET | `/api/v1/sagas/{sagaId}` | Saga＋步驟 |
+| GET | `/api/v1/accounts/{accountId}` | 餘額 |
+| POST | `/api/v1/accounts/{accountId}/reset` | 還原種子（練習用） |
+| GET | `/api/v1/events` | 記憶體 Kafka 軌跡 |
+| GET | `/api/v1/demo/state` | 前台一次拉齊 |
+
+## 7. 驗收 Case（單元＋整合成對）
+
+| Case | 單元 | 整合 | Acceptance |
+|------|------|------|------------|
+| SAGA-001 | Orchestrator 成功路徑寫 Outbox `RESERVE_FUNDS` | POST 合法單 → 終態 FILLED／COMPLETED，扣款 | 成功劇情 |
+| SAGA-002 | 帳戶不足時領域拒絕 Try | POST 超額 → COMPENSATED，帳戶不變 | 餘額不足 |
+| TCC-002 | Try 後 Cancel 還原 available | `forceFail=true` → COMPENSATED，帳戶還原 | 故意失敗 |
+| TRADE-001 | 查單不存在丟 404 語意 | GET 未知訂單 404 | 錯誤路徑 |
+| ACCOUNT-001 | 查得到種子帳戶 | GET ACC-001 200 | 查餘額 |
+| OUTBOX-001 | append 後 unpublished | 下單後 command topic 有訊息 | Outbox→Kafka |
+
+TCC 成功 Confirm 由 **SAGA-001** 覆蓋（不另開重複 HTTP Case）。
+
+## 8. 驗證
+
+```powershell
+.\scripts\check.ps1
+.\gradlew.bat bootRun
+```
+
+前台：http://localhost:8093/  
+Gate **不**要求 npm／Docker。
+</script>
+  <script type="text/markdown" data-doc="api" data-src="../API規格書.md">
+# TradingSagaTCC API 規格書
+
+衝突以 [TradingSagaTCC 規格書.md](TradingSagaTCC%20規格書.md) 為準。
+
+Base：`http://localhost:8093`  
+OpenAPI：`/swagger-ui.html`、`/v3/api-docs`
+
+## POST /api/v1/trades
+
+啟動跨庫 Saga。合法請求 **202**，body 含 `orderId`／`sagaId`／`status`（當下多為 `STARTED`／`PENDING`）。
+
+```json
+{
+  "accountId": "ACC-001",
+  "symbol": "BTCUSDT",
+  "side": "BUY",
+  "quantity": 1,
+  "price": 10000,
+  "forceFail": false
+}
+```
+
+| 欄位 | 規則 |
+|------|------|
+| accountId | 必填；不存在 → 404 |
+| symbol | 必填、≤32 |
+| side | `BUY` 或 `SELL` |
+| quantity | 必填、> 0 |
+| price | 必填、> 0 |
+| forceFail | 可省略，預設 false；true 時帳戶 Confirm 改走 Cancel |
+
+驗證失敗 → **422** `{ error, message, fieldErrors }`。
+
+## GET /api/v1/trades
+
+訂單陣列（新到舊），元素同單筆。
+
+## GET /api/v1/trades/{orderId}
+
+**200** 或 **404**。
+
+```json
+{
+  "orderId": "...",
+  "sagaId": "...",
+  "accountId": "ACC-001",
+  "symbol": "BTCUSDT",
+  "side": "BUY",
+  "quantity": 1,
+  "price": 10000,
+  "amount": 10000,
+  "status": "FILLED",
+  "forceFail": false,
+  "createdAt": "2026-08-27T08:00:00Z"
+}
+```
+
+## GET /api/v1/sagas/{sagaId}
+
+**200** 或 **404**。
+
+```json
+{
+  "sagaId": "...",
+  "orderId": "...",
+  "status": "COMPLETED",
+  "steps": [
+    { "name": "ORDER_CREATED", "detail": "...", "at": "..." }
+  ]
+}
+```
+
+終態：`COMPLETED`｜`COMPENSATED`｜`FAILED`。
+
+## GET /api/v1/accounts/{accountId}
+
+**200** 或 **404**。`total` = available + frozen。
+
+## POST /api/v1/accounts/{accountId}/reset
+
+將指定帳戶還原為 available=100000、frozen=0（練習重複跑劇情）。**200** 帳戶 DTO；不存在 **404**。
+
+## GET /api/v1/events
+
+Kafka 軌跡（記憶體 ring，最多 100 筆，新到舊）。
+
+```json
+[{ "topic": "trading.saga.commands", "type": "RESERVE_FUNDS", "sagaId": "...", "payload": "...", "at": "..." }]
+```
+
+## GET /api/v1/demo/state
+
+`{ "account", "orders", "events" }`，account 固定種子 `ACC-001`（若尚未 seed 則 404）。
+
+## 錯誤形狀
+
+```json
+{
+  "timestamp": "...",
+  "status": 404,
+  "error": "Not Found",
+  "message": "..."
+}
+```
+</script>
+  <script type="text/markdown" data-doc="architecture" data-src="architecture.md">
+# 架構說明
+
+> 衝突以 [TradingSagaTCC 規格書.md](../TradingSagaTCC%20規格書.md) 為準。  
+> **詳細圖（角色／method／正負向／Case）：** [codeGraphic.html](codeGraphic.html)（非權威 VIEW）。
+
+## 分層
+
+| 層 | 職責 |
+|----|------|
+| Controller | HTTP／DTO；禁止 Repository |
+| Service | Saga 編排、TCC、補償、查詢；`@Transactional` 指定哪一庫 |
+| Repository | 單一庫存取 |
+| Messaging | Outbox Relay、Kafka listener |
+
+## 雙庫邊界（不變）
+
+```text
+訂單庫 orderdb          Kafka                 帳戶庫 accountdb
+trade_orders            commands ──────────►  accounts
+saga_instances     ◄─── events                tcc_reservations
+saga_steps
+outbox_events
+```
+
+訂單 Service **不得** 寫帳戶表；帳戶 TCC **不得** 寫訂單表。讀帳戶是否存在（啟動前）允許。
+
+## 元件角色（摘要）
+
+| 角色 | Class | 關鍵 function |
+|------|-------|----------------|
+| Entry UI | `app.js` | `place`／`pollSaga`／`reportOutcome` |
+| HTTP | `TradeController` | `place` |
+| 編排起點 | `SagaOrchestrator` | `start` |
+| Outbox | `OutboxRelayJob`／`OutboxPublisherService` | `tick`／`append`／`publishPending`（**發件匣**，見 [outbox-發件匣.md](outbox-發件匣.md)） |
+| Kafka 配線 | `SagaKafkaListeners` | `onCommand`／`onEvent` |
+| TCC 參與者 | `AccountCommandHandler` | `onMessage` |
+| TCC 資金 | `AccountTccService`／`Account` | `tryReserve`／`confirm`／`cancel` |
+| 編排推進 | `OrderSagaEventHandler` | `onReserved`／`onConfirmed` |
+| 補償 | `OrderMarkFailedAction` | `compensate` |
+
+完整表與圖：codeGraphic Tab①。
+
+## Entry → method（正向 SAGA-001）
+
+| 步驟 | 元件 | Method |
+|------|------|--------|
+| 1 | `app.js` | `place(false)` → `POST /api/v1/trades` |
+| 2 | `TradeController` | `place` → `SagaOrchestrator.start` |
+| 3 | `SagaOrchestrator` | `start`：`TradeOrder.pending`＋`ACCOUNT_TRYING`＋Outbox `RESERVE_FUNDS` |
+| 4 | `OutboxRelayJob` | `tick` → `OutboxPublisherService.publishPending` |
+| 5 | `SagaKafkaListeners` | `onCommand` → `AccountCommandHandler.onMessage` |
+| 6 | `AccountTccService` | `tryReserve` → `Account.tryReserve` |
+| 7 | `OrderSagaEventHandler` | `onReserved` → Outbox `CONFIRM_FUNDS` |
+| 8 | `AccountTccService` | `confirm(false)` → `Account.confirm`（扣款） |
+| 9 | `OrderSagaEventHandler` | `onConfirmed` → `markFilled`＋`COMPLETED` |
+| 10 | `app.js` | `pollSaga` → `reportOutcome` |
+
+## 負向 method
+
+| Case | 分歧點 | 鏈 |
+|------|--------|-----|
+| SAGA-002 | `tryReserve`→false | `FUNDS_FAILED` → `OrderSagaEventHandler.onMessage` → `compensate` → `markFailed`＋`COMPENSATED` |
+| TCC-002 | `confirm(true)` | 內呼 `cancel` → `FUNDS_CANCELLED` → `compensate` |
+
+**狀態語意：** 成功＝Saga `COMPLETED`＋訂單 `FILLED`；補償＝Saga `COMPENSATED`＋訂單 `FAILED`。
+
+## 三組狀態（摘要）
+
+| | Saga | TCC 預留票 | 訂單 |
+|--|------|-----------|------|
+| 管什麼 | 流程走到哪 | 錢凍結／已扣／已退 | 使用者看到的結果 |
+| 庫 | orderdb | accountdb | orderdb |
+| 值 | `STARTED`…`COMPLETED`／`COMPENSATED` | `TRYING`／`CONFIRMED`／`CANCELLED` | `PENDING`／`FILLED`／`FAILED` |
+
+預留票先變、Saga 收到事件後才跟上（最終一致）。三情境逐步對照與常見誤會 → [狀態對照-Saga-TCC-訂單.md](狀態對照-Saga-TCC-訂單.md)。
+
+## Outbox（發件匣）摘要
+
+中文：**發件匣**。訂單同 TX 寫入 `outbox_events`（待發），`OutboxRelayJob` 定時轉送 Kafka（提交後發訊）。  
+完整敘述與和「預留票」對照 → [outbox-發件匣.md](outbox-發件匣.md)。
+
+## 模組地圖
+
+| 套件 | 說明 |
+|------|------|
+| `order` | 訂單／Saga 查詢與 HTTP |
+| `account` | 帳戶查詢＋`AccountTccService` |
+| `saga` | `SagaOrchestrator`、補償、事件推進 |
+| `messaging` | Outbox、Kafka、EventLog |
+| `expansion` | 預留介面（TCC／補償／Relay／Consumer） |
+| `config` | 雙 DataSource、內嵌 Kafka、排程 |
+
+## Case → Hotspot
+
+見 [codeGraphic.html](codeGraphic.html) Tab④ 與 [testing.md](testing.md)。公版原則：EOS `knowledge/documentation.md` §流程案例圖。
+</script>
+  <script type="text/markdown" data-doc="database" data-src="資料庫設計.md">
+# 資料庫設計
+
+> 衝突以主規格為準。規範：EngineeringOS `knowledge/database-design.md`
+
+## 1. 存取鏈
+
+```text
+Controller → Service (@Transactional 指定 order 或 account TM) → Repository → 該庫
+```
+
+禁止單一事務寫兩庫。
+
+### 為什麼說「禁止 XA」（名詞）
+
+| 名詞 | 意思 |
+|------|------|
+| **Local TX** | 單一庫內 ACID：「全部成功才成功」。本專案 `orderTransactionManager`／`accountTransactionManager` 各管一庫。 |
+| **XA** | 跨多個資源（兩庫、DB＋MQ…）參加**同一筆全域事務**的協定。 |
+| **JTA** | Java 啟動／提交全域事務的 API；底層常走 XA。 |
+| **2PC** | 兩階段提交：Prepare → Commit／Rollback，由 Global Transaction Manager 當裁判。 |
+
+本專案**不用** XA／JTA：跨庫改靠 Saga＋Outbox＋Kafka＋TCC／補償達成最終一致。  
+程式註解權威：`OrderDataSourceConfig`【概念·XA 是什麼】。
+
+## 2. 資料表
+
+### orderdb
+
+| 表 | 用途 | 重要約束 |
+|----|------|----------|
+| trade_orders | 訂單 | PK order_id |
+| saga_instances | Saga 進度 | PK saga_id |
+| saga_steps | 時間軸 | PK id，索引 saga_id |
+| outbox_events | **發件匣**（待送 Kafka 的信） | `published_at` NULL＝待發；非 NULL＝已寄出 |
+
+> **發件匣語意：** 與訂單／Saga 同交易寫入＝投遞進匣；`OutboxRelayJob` 定時寄出＝郵差。  
+> 詳見 [outbox-發件匣.md](outbox-發件匣.md)。與帳戶庫「預留票」不同庫、不同職責。
+
+### accountdb
+
+| 表 | 用途 | 重要約束 |
+|----|------|----------|
+| accounts | 餘額 | PK account_id |
+| tcc_reservations | TCC **預留票**（帳戶側憑證，非訂單） | PK saga_id（冪等 Key） |
+
+> **預留票語意：** Try 成功寫一列＝發票（available→frozen）；Confirm＝兌票扣款；Cancel＝退票還原。  
+> 同一 `saga_id` 重送不再二次扣款。訂單庫看不到此表，只靠 Kafka 事件得知結果。  
+> `saga_instances.status`／`tcc_reservations.state`／`trade_orders.status` 三者差異與逐步對照 → [狀態對照-Saga-TCC-訂單.md](狀態對照-Saga-TCC-訂單.md)。
+
+## 3. Entity 對照
+
+| Entity | 表 | 庫 |
+|--------|-----|-----|
+| TradeOrder | trade_orders | order |
+| SagaInstance | saga_instances | order |
+| SagaStep | saga_steps | order |
+| OutboxEvent | outbox_events | order |
+| Account | accounts | account |
+| TccReservation | tcc_reservations | account |
+
+## 4. 環境
+
+| Profile | DB | 設定位置 |
+|---------|-----|----------|
+| default／test | 雙 H2 mem | `application.yml` `trading.datasource.*` |
+| 外接 Kafka | 同上 DB | `trading.kafka.embedded=false` |
+
+種子：`ACC-001` available=100000。
+
+## 5. SQL 驗證
+
+見 `docs/sql/01-schema-verify.sql`。H2 Console 需**分別**連兩條 JDBC。
+</script>
+  <script type="text/markdown" data-doc="testing" data-src="testing.md">
+# 測試與驗證
+
+> 衝突以主規格書為準。規範：EngineeringOS `knowledge/testing.md`  
+> 教學／路線 A～C／疑難排解：EngineeringOS `knowledge/demo-ready-guide.md`
+
+## 驗證入口
+
+```powershell
+.\scripts\check.ps1
+```
+
+`gradlew check`＝`test`（排除 `@Tag integration`）+ `integrationTest`。Performance：N/A。
+
+## Fixture（texture · JSON）
+
+路徑：`docs/test-data/{domain}/{CASE}.json`；載入器：`SagaTestFixtures`。
+
+| Case | JSON | 用途 |
+|------|------|------|
+| SAGA-001 | `trade/SAGA-001-SUCCESS.json` | Happy Path body |
+| SAGA-002 | `trade/SAGA-002-INSUFFICIENT.json` | 餘額不足 body |
+| TCC-002 | `trade/TCC-002-FORCE-FAIL.json` | forceFail body |
+| OUTBOX-001 | `trade/OUTBOX-001-RESERVE.json` | Outbox 軌跡 |
+| ACCOUNT-001 | `account/ACCOUNT-001-SEED.json` | 種子餘額期望 |
+| TRADE-001 | （無 body；GET 404） | 未知訂單 |
+
+## Case（單元 ↔ 整合成對）
+
+| Case | 單元 | 整合 |
+|------|------|------|
+| SAGA-001 | `SagaOrchestratorTest`、`AccountTest` Try-Confirm、`AccountTccServiceTest` confirm | POST fixture → COMPLETED／available 90000 |
+| SAGA-002 | `AccountTest` 不足、`AccountTccServiceTest` false、`OrderMarkFailedActionTest` | POST fixture → COMPENSATED／餘額不變 |
+| TCC-002 | `AccountTest` Try-Cancel、`AccountTccServiceTest` forceFail | forceFail fixture → COMPENSATED／餘額還原 |
+| TRADE-001 | `TradeQueryServiceTest`、`GlobalExceptionHandlerTest` | GET 未知訂單 404 |
+| ACCOUNT-001 | `AccountQueryServiceTest` | GET ACC-001 200（對照 seed JSON） |
+| OUTBOX-001 | `OutboxPublisherServiceTest`、`SagaOrchestratorTest` | events 含 `RESERVE_FUNDS` |
+
+## DoD
+
+- [x] 每個公開 Service 行為有單元測
+- [x] 每個對外 API Happy + 錯誤路徑（404）
+- [x] 契約成對、禁止單邊；Happy Path 用外部 JSON fixture
+- [x] `.\scripts\check.ps1` 綠
+- [x] Runtime Smoke L1（API + 可選 UI）
+
+## Runtime Smoke（:8093 · 不進 check）
+
+| 腳本 | 級別 | 需 Node | 通過訊號 |
+|------|------|---------|----------|
+| `docs/run-l0-smoke.ps1` | L0 | 否 | `ALL_L0_SMOKE_OK` |
+| `docs/run-api-smoke.ps1` | L1 API | 否 | `ALL_API_SMOKE_OK` |
+| `docs/run-ui-smoke.ps1` | L1 UI | 是 | `ALL_UI_SMOKE_OK` |
+| `docs/run-smoke-l1.ps1` | L1 編排 | 可選 | API 綠 + `UI automation=PASS\|N/A` |
+| `docs/run-release-gate.ps1` | Release 閘 | 可選 | `check` 綠 + `ALL_RELEASE_GATE_OK`（含 L1） |
+
+**Release 建議：** `bootRun` → `.\docs\run-release-gate.ps1`（`-SkipSmoke` 僅 check；`-SkipUi` 僅 API L1）。  
+**Graph 路由：** `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`）。  
+**流程案例圖／Hotspot：** `docs/codeGraphic.html`（正向／負向／Case→窗口）；原則見 EOS `documentation.md` §流程案例圖。
+
+**L1 劇情（API／UI 共用）：** SAGA-001／002、TCC-002、TRADE-001。人看：`http://localhost:8093/test/runner.html`。
+
+### 證據欄範例（`EOS-LOOP-RELEASE`）
+
+```text
+級別: L1
+啟動: .\gradlew.bat bootRun
+埠: 8093
+探活: health=UP  UI=200
+劇情: SAGA-001=COMPLETED/90000 ; SAGA-002=COMPENSATED/100000 ; TCC-002=COMPENSATED/100000 ; TRADE-001=404
+UI automation: PASS
+時間: <本地完成時刻>
+```
+
+公版範本來源：`EngineeringOS/eos-minimal/templates/docs/demo-ready/`。  
+**名詞（金樣、兩入口+一編排等）：** EOS `knowledge/testing.md` 名詞小辭典。本專案為 Demo-ready **金樣**實作。
+</script>
+  <script type="text/markdown" data-doc="states" data-src="狀態對照-Saga-TCC-訂單.md">
+# 狀態對照：Saga／TCC 預留票／訂單
+
+> 衝突以主規格／[architecture.md](architecture.md) 為準。本檔為學習敘述（VIEW）。  
+> 程式權威：`SagaStatus`、`TccState`、`OrderStatus` 三個 enum 的 JavaDoc。
+
+## 1. 一句話
+
+**Saga 是「流程進度表」，TCC 預留票是「帳戶的資金憑證」，訂單是「給使用者看的結果」。**  
+三者存在不同表（Saga／訂單在 orderdb，預留票在 accountdb），彼此不直接讀取，只靠同一個 `sagaId` 與 Kafka 事件串起來。
+
+## 2. 三組狀態總覽
+
+| | Saga 狀態 | TCC 預留票狀態 | 訂單狀態 |
+|--|-----------|----------------|----------|
+| Enum | `SagaStatus` | `TccState` | `OrderStatus` |
+| 表 | orderdb `saga_instances` | accountdb `tcc_reservations` | orderdb `trade_orders` |
+| 管什麼 | 整個流程走到哪一步 | 這筆錢是凍結、已扣、還是已退 | 對使用者而言成交了沒 |
+| 誰改它 | 訂單側：`SagaOrchestrator`、`OrderSagaEventHandler`、`OrderMarkFailedAction` | 帳戶側：`AccountTccService` | 訂單側：`OrderSagaEventHandler`、`OrderMarkFailedAction` |
+| 值 | `STARTED`、`ACCOUNT_TRYING`、`ACCOUNT_CONFIRMING`、`COMPLETED`、`COMPENSATING`、`COMPENSATED`、`FAILED` | `TRYING`、`CONFIRMED`、`CANCELLED` | `PENDING`、`FILLED`、`FAILED` |
+| 什麼時候出現 | 下單當下建立 | **Try 成功才寫一列**；Try 失敗根本沒有這張票 | 下單當下建立 |
+| 轉換規則放哪 | `SagaStatus.canTransitionTo`（集中規則表） | `TccReservation.markConfirmed`／`markCancelled` | `TradeOrder.markFilled`／`markFailed` |
+
+### 全景圖：狀態怎麼在兩庫之間流動
+
+兩庫之間**沒有直接連線**，只靠 Kafka 事件傳話。帳戶側改完預留票才發事件，訂單側收到事件才改 Saga 和訂單。
+
+```mermaid
+flowchart LR
+    subgraph ORDERSIDE["訂單側（orderdb）"]
+        OH["OrderSagaEventHandler<br/>OrderMarkFailedAction"]
+        SAGA[("saga_instances<br/>Saga 狀態")]
+        ORD[("trade_orders<br/>訂單狀態")]
+        OB[("outbox_events<br/>發件匣")]
+    end
+    subgraph KAFKA["Kafka"]
+        CMD[["command topic"]]
+        EVT[["event topic"]]
+    end
+    subgraph ACCOUNTSIDE["帳戶側（accountdb）"]
+        AH["AccountCommandHandler<br/>AccountTccService"]
+        TCC[("tcc_reservations<br/>預留票狀態")]
+        ACC[("accounts<br/>available／frozen")]
+    end
+
+    OB -- "① OutboxRelayJob 寄出命令" --> CMD
+    CMD -- "② RESERVE／CONFIRM_FUNDS" --> AH
+    AH -- "③ 先改" --> TCC
+    AH -- "③ 先改" --> ACC
+    AH -- "④ 再發結果事件" --> EVT
+    EVT -- "⑤ FUNDS_RESERVED／CONFIRMED<br/>FUNDS_FAILED／CANCELLED" --> OH
+    OH -- "⑥ 推進" --> SAGA
+    OH -- "⑥ FILLED／FAILED" --> ORD
+    OH -. "⑦ 需要下一步時<br/>登記 CONFIRM_FUNDS" .-> OB
+```
+
+圖上編號就是一輪的順序：命令從發件匣出發（①②），帳戶側先改自己的表（③）才發事件（④），訂單側收到後改 Saga 與訂單（⑤⑥）；成功路徑還需要 Confirm，就再往發件匣登記一道命令（⑦），回到 ①。
+
+## 3. 各自的狀態圖
+
+### Saga（流程）
+
+```mermaid
+stateDiagram-v2
+    [*] --> STARTED: SagaInstance.start
+    STARTED --> ACCOUNT_TRYING: SagaOrchestrator.start 登記 RESERVE_FUNDS
+    ACCOUNT_TRYING --> ACCOUNT_CONFIRMING: 收到 FUNDS_RESERVED，登記 CONFIRM_FUNDS
+    ACCOUNT_CONFIRMING --> COMPLETED: 收到 FUNDS_CONFIRMED
+    STARTED --> COMPENSATING: 失敗事件（理論上）
+    ACCOUNT_TRYING --> COMPENSATING: 收到 FUNDS_FAILED（SAGA-002）
+    ACCOUNT_CONFIRMING --> COMPENSATING: 收到 FUNDS_CANCELLED（TCC-002）
+    COMPENSATING --> COMPENSATED: 同一 TX 緊接
+    COMPENSATING --> FAILED: 預留，目前未使用
+    COMPLETED --> [*]
+    COMPENSATED --> [*]
+    FAILED --> [*]
+
+    classDef ok fill:#d1e7dd,stroke:#198754,color:#111
+    classDef warn fill:#fff3cd,stroke:#ffc107,color:#111
+    classDef unused fill:#eeeeee,stroke:#999999,stroke-dasharray: 4 4,color:#111
+    class COMPLETED ok
+    class COMPENSATED warn
+    class FAILED unused
+```
+
+<details>
+<summary>純文字版</summary>
+
+```text
+正向：STARTED → ACCOUNT_TRYING → ACCOUNT_CONFIRMING → COMPLETED
+負向：STARTED／ACCOUNT_TRYING／ACCOUNT_CONFIRMING → COMPENSATING → COMPENSATED
+預留：COMPENSATING → FAILED（目前沒有程式走到）
+```
+
+</details>
+
+| 狀態 | 誰設定 | 觸發時機 |
+|------|--------|----------|
+| `STARTED` | `SagaInstance.start` | 建立實體（初始值），同 TX 立刻轉下一步 |
+| `ACCOUNT_TRYING` | `SagaOrchestrator.start` | 發件匣登記 `RESERVE_FUNDS` |
+| `ACCOUNT_CONFIRMING` | `OrderSagaEventHandler.onReserved` | 收到 `FUNDS_RESERVED`，登記 `CONFIRM_FUNDS` |
+| `COMPLETED` | `OrderSagaEventHandler.onConfirmed` | 收到 `FUNDS_CONFIRMED` |
+| `COMPENSATING` | `OrderMarkFailedAction.compensate` | 收到 `FUNDS_FAILED`／`FUNDS_CANCELLED`（中間態） |
+| `COMPENSATED` | `OrderMarkFailedAction.compensate` | 同一 TX 緊接 `COMPENSATING` |
+| `FAILED` | （無） | 預留：補償本身也失敗時使用 |
+
+### TCC 預留票（資金）
+
+```mermaid
+stateDiagram-v2
+    state "（無票）" as NO_TICKET
+    [*] --> NO_TICKET: 收到 RESERVE_FUNDS
+    NO_TICKET --> TRYING: tryReserve 成功，available 轉 frozen
+    NO_TICKET --> [*]: tryReserve 失敗（餘額不足，不寫票）
+    TRYING --> CONFIRMED: confirm(false)，真正扣款
+    TRYING --> CANCELLED: cancel，frozen 退回 available
+    CONFIRMED --> [*]
+    CANCELLED --> [*]
+
+    classDef ok fill:#d1e7dd,stroke:#198754,color:#111
+    classDef warn fill:#fff3cd,stroke:#ffc107,color:#111
+    class CONFIRMED ok
+    class CANCELLED warn
+```
+
+<details>
+<summary>純文字版</summary>
+
+```text
+（無票）──Try 成功──► TRYING ──Confirm──► CONFIRMED
+                         │
+                         └──Cancel──► CANCELLED
+
+Try 失敗（餘額不足）：不寫票，停在「無票」
+```
+
+</details>
+
+| 狀態 | 帳戶餘額變化 | 誰設定 |
+|------|--------------|--------|
+| （無票） | 沒動 | — |
+| `TRYING` | available → frozen（凍結） | `AccountTccService.tryReserve` |
+| `CONFIRMED` | frozen 消失（真正扣款，total 下降） | `AccountTccService.confirm(false)` |
+| `CANCELLED` | frozen → available（退回） | `AccountTccService.cancel`（forceFail 時由 `confirm(true)` 內部呼叫） |
+
+限制：`CONFIRMED` 之後不能再 Cancel（`markCancelled` 會丟例外）；已 `CANCELLED` 再 Cancel 是空操作（冪等）。
+
+### 訂單（結果）
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: TradeOrder.pending（下單當下）
+    PENDING --> FILLED: onConfirmed 收到 FUNDS_CONFIRMED
+    PENDING --> FAILED: compensate 收到 FUNDS_FAILED／FUNDS_CANCELLED
+    FILLED --> [*]
+    FAILED --> [*]
+
+    classDef ok fill:#d1e7dd,stroke:#198754,color:#111
+    classDef warn fill:#fff3cd,stroke:#ffc107,color:#111
+    class FILLED ok
+    class FAILED warn
+```
+
+## 4. 三個情境逐步對照
+
+每個情境先看時序圖（誰傳話給誰、狀態在哪一刻改變），再看表格（每一步三張表各自的值）。注意 TCC 永遠比 Saga 先變。
+
+### SAGA-001 成功
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as 前台 app.js
+    participant O as 訂單側
+    participant K as Kafka
+    participant A as 帳戶側 TCC
+    UI->>O: POST /api/v1/trades
+    Note over O: Saga ACCOUNT_TRYING<br/>訂單 PENDING<br/>發件匣登記 RESERVE_FUNDS
+    O-->>UI: 202 PENDING（附 sagaId）
+    O->>K: RESERVE_FUNDS（OutboxRelayJob 寄出）
+    K->>A: RESERVE_FUNDS
+    Note over A: 預留票 TRYING<br/>available 轉 frozen
+    A->>K: FUNDS_RESERVED
+    K->>O: FUNDS_RESERVED
+    Note over O: Saga ACCOUNT_CONFIRMING<br/>發件匣登記 CONFIRM_FUNDS
+    O->>K: CONFIRM_FUNDS（OutboxRelayJob 寄出）
+    K->>A: CONFIRM_FUNDS
+    Note over A: 預留票 CONFIRMED<br/>frozen 扣掉
+    A->>K: FUNDS_CONFIRMED
+    K->>O: FUNDS_CONFIRMED
+    Note over O: Saga COMPLETED<br/>訂單 FILLED
+    UI->>O: GET /api/v1/sagas/{sagaId}（輪詢）
+    O-->>UI: COMPLETED
+```
+
+| 步驟 | 事件／動作 | Saga | 預留票 | 訂單 |
+|------|-----------|------|--------|------|
+| 1 | `POST /trades`，`SagaOrchestrator.start` | `ACCOUNT_TRYING` | （無票） | `PENDING` |
+| 2 | 郵差寄出 `RESERVE_FUNDS` → 帳戶 Try 成功 | `ACCOUNT_TRYING` | `TRYING` | `PENDING` |
+| 3 | 訂單側收到 `FUNDS_RESERVED` | `ACCOUNT_CONFIRMING` | `TRYING` | `PENDING` |
+| 4 | 郵差寄出 `CONFIRM_FUNDS` → 帳戶 Confirm | `ACCOUNT_CONFIRMING` | `CONFIRMED` | `PENDING` |
+| 5 | 訂單側收到 `FUNDS_CONFIRMED` | **`COMPLETED`** | `CONFIRMED` | **`FILLED`** |
+
+### SAGA-002 餘額不足
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as 前台 app.js
+    participant O as 訂單側
+    participant K as Kafka
+    participant A as 帳戶側 TCC
+    UI->>O: POST /api/v1/trades（金額大於 available）
+    Note over O: Saga ACCOUNT_TRYING<br/>訂單 PENDING
+    O-->>UI: 202 PENDING
+    O->>K: RESERVE_FUNDS（OutboxRelayJob 寄出）
+    K->>A: RESERVE_FUNDS
+    Note over A: tryReserve 回 false<br/>不寫預留票，餘額沒動
+    A->>K: FUNDS_FAILED
+    K->>O: FUNDS_FAILED
+    Note over O: OrderMarkFailedAction.compensate<br/>Saga COMPENSATING 轉 COMPENSATED<br/>訂單 FAILED
+    UI->>O: GET /api/v1/sagas/{sagaId}（輪詢）
+    O-->>UI: COMPENSATED
+```
+
+| 步驟 | 事件／動作 | Saga | 預留票 | 訂單 |
+|------|-----------|------|--------|------|
+| 1 | `POST /trades`（金額大於 available） | `ACCOUNT_TRYING` | （無票） | `PENDING` |
+| 2 | 帳戶 Try 失敗，**不寫票** | `ACCOUNT_TRYING` | （無票） | `PENDING` |
+| 3 | 訂單側收到 `FUNDS_FAILED` → 補償 | **`COMPENSATED`** | （無票） | **`FAILED`** |
+
+帳戶餘額從頭到尾沒動過。
+
+### TCC-002 forceFail（Confirm 階段故意失敗）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as 前台 app.js
+    participant O as 訂單側
+    participant K as Kafka
+    participant A as 帳戶側 TCC
+    UI->>O: POST /api/v1/trades（forceFail=true）
+    Note over O: Saga ACCOUNT_TRYING<br/>訂單 PENDING
+    O-->>UI: 202 PENDING
+    O->>K: RESERVE_FUNDS
+    K->>A: RESERVE_FUNDS
+    Note over A: 預留票 TRYING<br/>available 轉 frozen
+    A->>K: FUNDS_RESERVED
+    K->>O: FUNDS_RESERVED
+    Note over O: Saga ACCOUNT_CONFIRMING
+    O->>K: CONFIRM_FUNDS（帶 forceFail）
+    K->>A: CONFIRM_FUNDS
+    Note over A: confirm(true) 內部改呼叫 cancel<br/>預留票 CANCELLED<br/>frozen 退回 available
+    A->>K: FUNDS_CANCELLED
+    K->>O: FUNDS_CANCELLED
+    Note over O: compensate<br/>Saga COMPENSATED<br/>訂單 FAILED
+    UI->>O: GET /api/v1/sagas/{sagaId}（輪詢）
+    O-->>UI: COMPENSATED
+```
+
+| 步驟 | 事件／動作 | Saga | 預留票 | 訂單 |
+|------|-----------|------|--------|------|
+| 1 | `POST /trades`（`forceFail=true`） | `ACCOUNT_TRYING` | （無票） | `PENDING` |
+| 2 | 帳戶 Try 成功 | `ACCOUNT_TRYING` | `TRYING` | `PENDING` |
+| 3 | 訂單側收到 `FUNDS_RESERVED` | `ACCOUNT_CONFIRMING` | `TRYING` | `PENDING` |
+| 4 | `confirm(true)` 內部改走 Cancel | `ACCOUNT_CONFIRMING` | `CANCELLED` | `PENDING` |
+| 5 | 訂單側收到 `FUNDS_CANCELLED` → 補償 | **`COMPENSATED`** | `CANCELLED` | **`FAILED`** |
+
+凍結的錢已退回 available。
+
+### 終態組合速查
+
+| 情境 | Saga | 預留票 | 訂單 | 帳戶 available |
+|------|------|--------|------|----------------|
+| SAGA-001 成功 | `COMPLETED` | `CONFIRMED` | `FILLED` | 減少 |
+| SAGA-002 餘額不足 | `COMPENSATED` | （無票） | `FAILED` | 不變 |
+| TCC-002 forceFail | `COMPENSATED` | `CANCELLED` | `FAILED` | 不變（先凍結後退回） |
+
+## 5. 為什麼會「暫時對不上」
+
+帳戶側先改預留票，再發 Kafka 事件；訂單側收到事件才更新 Saga 與訂單。  
+所以上表步驟 2、4 會看到「預留票已經變了，Saga 還沒變」。這是**最終一致**：兩庫沒有 XA 全域事務（見 [資料庫設計.md](資料庫設計.md)），只保證事件送達後會對齊。
+
+前台因此要：
+
+- **輪詢 Saga**（`GET /api/v1/sagas/{sagaId}`）直到終態，而不是看 HTTP 202 就下結論；
+- **同時看 Saga 與訂單**再下結論（`app.js` 的 `reportOutcome`）；
+- 輪詢逾時只能說「還沒結束」，不能誤報成失敗。
+
+前台判讀流程（`pollSaga` → `reportOutcome`）：
+
+```mermaid
+flowchart TD
+    A["POST /trades 回 202<br/>拿到 sagaId"] --> B["pollSaga<br/>GET /sagas/{sagaId}"]
+    B --> C{"Saga 到終態了嗎？"}
+    C -- "還沒，未逾時" --> B
+    C -- "還沒，已逾時" --> T["提示：流程尚未結束<br/>不可誤報失敗"]
+    C -- "COMPLETED" --> D{"訂單是 FILLED？"}
+    D -- "是" --> S["成功：已扣款"]
+    D -- "否" --> W["提示：請重新整理"]
+    C -- "COMPENSATED／FAILED" --> F["補償完成：訂單 FAILED<br/>帳戶應已還原"]
+
+    classDef ok fill:#d1e7dd,stroke:#198754,color:#111
+    classDef warn fill:#fff3cd,stroke:#ffc107,color:#111
+    class S ok
+    class F,T,W warn
+```
+
+## 6. 常見誤會
+
+| 誤會 | 實際 |
+|------|------|
+| `CANCELLED` 和 `COMPENSATED` 是同一件事 | 層級不同。`CANCELLED` 是「這筆錢已退回」（單一資源）；`COMPENSATED` 是「整個流程的失敗處理已收尾」。SAGA-002 就是 Saga `COMPENSATED` 但根本沒有預留票 |
+| 訂單 `FAILED` 表示系統出錯 | 不是。Saga `COMPENSATED`＋訂單 `FAILED` 是失敗路徑**正確收尾** |
+| 看得到 `COMPENSATING` | 幾乎看不到：`compensate` 在同一 TX 內先轉 `COMPENSATING` 再立刻轉 `COMPENSATED` |
+| Saga `FAILED` 會出現 | 目前沒有程式設定它，只是狀態機預留的出口 |
+| TCC 知道流程在「確認中」 | 不知道。預留票只記錢的狀況；「現在在等誰」只有 Saga 會記 |
+| 編排者會發 `CANCEL_FUNDS` | 目前不會。帳戶側有處理 `CANCEL_FUNDS`，但沒有程式發送；本版的 Cancel 只由 forceFail 觸發 |
+
+## 7. 重送時怎麼不出錯（冪等）
+
+Kafka 可能重送同一則事件，三邊各自防重：
+
+| 位置 | 防重方式 |
+|------|----------|
+| Saga | `OrderSagaEventHandler`、`OrderMarkFailedAction` 看到 `isTerminal()` 直接 return；重送的 `FUNDS_RESERVED` 看到 `ACCOUNT_CONFIRMING` 也略過 |
+| 預留票 | PK＝`sagaId`。Try 看到票已存在就不再凍結；Confirm 看到 `CONFIRMED` 直接回成功；Cancel 看到 `CANCELLED` 直接略過 |
+| 狀態機 | `SagaStatus.canTransitionTo` 讓終態回 false，即使有漏網之魚也改不動已結束的 Saga |
+
+## 8. 怎麼自己觀察
+
+1. `bootRun` 後開 http://localhost:8093/
+2. 下單後記下 `sagaId`，查：
+   - `GET /api/v1/sagas/{sagaId}` — Saga 狀態與步驟軌跡
+   - `GET /api/v1/trades/{orderId}` — 訂單狀態
+   - `GET /api/v1/accounts/ACC-001` — available／frozen
+   - `GET /api/v1/events` — Kafka 走過哪些訊息 type
+3. 分別用一般下單、超額下單、`forceFail=true` 跑三個情境，對照第 4 節的表。
+4. 每輪前可 `POST /api/v1/accounts/ACC-001/reset` 還原種子餘額。
+
+## 9. 相關程式
+
+| 主題 | 位置 |
+|------|------|
+| Saga 狀態與規則 | `order/domain/SagaStatus.java`、`SagaInstance.transitionTo` |
+| 預留票 | `account/domain/TccState.java`、`TccReservation.java`、`AccountTccService.java` |
+| 訂單 | `order/domain/OrderStatus.java`、`TradeOrder.java` |
+| 事件推進 | `messaging/OrderSagaEventHandler.java` |
+| 補償 | `saga/OrderMarkFailedAction.java` |
+| 前台判讀 | `static/app.js` 的 `pollSaga`、`reportOutcome` |
+| 延伸閱讀 | [outbox-發件匣.md](outbox-發件匣.md)（命令怎麼寄出）、[codeGraphic.html](codeGraphic.html)（正負向流程圖） |
+
+## 10. 一句話複習
+
+**預留票先變、Saga 後跟；成功看 `COMPLETED`＋`FILLED`，失敗看 `COMPENSATED`＋`FAILED`；錢有沒有還，看預留票和 available。**
+</script>
+  <script type="text/markdown" data-doc="outbox" data-src="outbox-發件匣.md">
+# Outbox（發件匣）說明
+
+> 衝突以主規格／[architecture.md](architecture.md) 為準。本檔為學習敘述（VIEW）。
+
+## 1. 中文怎麼叫
+
+| 英文 | 建議中文 | 理解 |
+|------|----------|------|
+| **Outbox** | **發件匣**（或待送佇列） | 像 email 的 Outbox：信寫好了、還沒寄出 |
+| **Relay** | **轉送／接力** | 把匣裡的信真正送到 Kafka |
+| **OutboxRelayJob** | **發件匣轉送排程** | 定時郵差：每隔一段時間掃匣、寄信 |
+
+口訣：**Outbox＝本庫的發件匣；Relay Job＝定時把匣裡的信送到 Kafka 的郵差。**
+
+## 2. 為什麼需要發件匣
+
+下單成功後若**直接**呼叫 Kafka：
+
+- DB 已提交、Kafka 失敗 → 庫裡有單、外面沒訊息  
+- 或順序顛倒造成重試困難  
+
+**Transactional Outbox（交易型發件匣／提交後發訊）** 做法：
+
+1. 與訂單／Saga **同一個訂單庫交易**寫入 `outbox_events`（`published_at = NULL`＝待發）  
+2. 交易提交成功後，才由背景程式把待發列送到 Kafka  
+3. 送成功才標記 `published_at`  
+
+這樣「有訂單就一定有待發紀錄」；寄失敗可下一輪再寄。
+
+## 3. 本專案角色對照
+
+```text
+SagaOrchestrator.start / OrderSagaEventHandler.onReserved
+        │  同一 order TX
+        ▼
+OutboxPort.append  →  outbox_events（發件匣落庫）
+        │  TX commit 後
+        ▼
+OutboxRelayJob.tick（定時）
+        │
+        ▼
+OutboxPublisherService.publishPending（轉送）
+        │  先 Kafka send，成功再 markPublished
+        ▼
+Kafka  →  SagaKafkaListeners
+```
+
+| 元件 | 中文角色 | 做什麼 |
+|------|----------|--------|
+| `outbox_events` | 發件匣表 | 存待發／已發訊息 |
+| `OutboxPort.append` | 投遞進匣 | 業務同 TX 寫入 unpublished |
+| `OutboxRelayJob.tick` | 定時郵差 | 排程呼叫轉送 |
+| `OutboxPublisherService.publishPending` | 實際寄信 | 掃 unpublished → Kafka → 標已發 |
+| `OutboxEvent` | 匣裡的一封信 | topic／key／payload／publishedAt |
+
+## 4. 敘事（學習用）
+
+想像你在櫃檯完成一筆下單：
+
+1. **櫃台（Orchestrator）** 把「請幫我凍結資金」這句話寫進**發件匣**，跟訂單一起蓋章存檔（同交易）。  
+2. 蓋章成功後，客人拿到的回條只是「受理中」（HTTP 202／PENDING），**不是**已扣款。  
+3. **郵差（OutboxRelayJob）** 定時打開發件匣，把還沒寄的信送到 Kafka 郵局。  
+4. **帳戶櫃檯（AccountCommandHandler／TCC）** 收到信才真正 Try／Confirm。  
+
+若沒有發件匣、櫃台直接打電話給帳戶櫃檯：電話斷線時你可能已經蓋章，對方卻沒接到——兩邊對不上帳。
+
+## 5. 與「預留票」差在哪
+
+| | Outbox 發件匣 | TCC 預留票 |
+|--|---------------|------------|
+| 庫 | **訂單庫** `outbox_events` | **帳戶庫** `tcc_reservations` |
+| 用途 | 可靠把命令／意圖送進 Kafka | 帳戶資金預留狀態與冪等 |
+| Key | 列 id；訊息 key 常用 sagaId | PK＝sagaId |
+
+兩者都服務「可靠與對帳」，但**一在訂單側寄信、一在帳戶側管錢**。
+
+## 6. 相關程式與設定
+
+- `OutboxRelayJob`：`trading.outbox.poll-ms`（預設 200；測試可 50）  
+- Case：OUTBOX-001（軌跡出現 `RESERVE_FUNDS`）  
+- 圖：`codeGraphic.html` 正向階段 A／B  
+
+## 7. 一句話複習
+
+**發件匣先落庫、提交後再寄 Kafka；郵差是排程，不是下單 HTTP 同步去寄。**
+</script>
 
   <footer>CodeGraphic 詳細版 · 非權威 · 衝突以規格書為準 · EOS documentation.md §流程案例圖</footer>
 
@@ -472,31 +1521,140 @@ flowchart LR
       "happy": document.getElementById("panel-happy"),
       "neg": document.getElementById("panel-neg"),
       "cases": document.getElementById("panel-cases"),
-      "boundary": document.getElementById("panel-boundary")
+      "boundary": document.getElementById("panel-boundary"),
+      "docs": document.getElementById("panel-docs")
     };
-    const firstId = "roles";
-    const rendered = new Set([firstId]);
+    const rendered = new Set();
     async function renderPanel(id) {
-      if (rendered.has(id)) return;
-      await mermaid.run({ nodes: panels[id].querySelectorAll(".mermaid") });
+      if (rendered.has(id) || id === "docs") return;
       rendered.add(id);
+      await mermaid.run({ nodes: panels[id].querySelectorAll(".mermaid") });
     }
-    mermaid.run({ nodes: panels[firstId].querySelectorAll(".mermaid") });
+    async function activateTab(id) {
+      tabs.forEach((t) => {
+        const on = t.dataset.tab === id;
+        t.classList.toggle("active", on);
+        t.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      Object.entries(panels).forEach(([key, panel]) => {
+        const on = key === id;
+        panel.classList.toggle("active", on);
+        panel.hidden = !on;
+      });
+      await renderPanel(id);
+    }
     tabs.forEach((tab) => {
       tab.addEventListener("click", async () => {
         const id = tab.dataset.tab;
-        tabs.forEach((t) => {
-          t.classList.toggle("active", t === tab);
-          t.setAttribute("aria-selected", t === tab ? "true" : "false");
-        });
-        Object.entries(panels).forEach(([key, panel]) => {
-          const on = key === id;
-          panel.classList.toggle("active", on);
-          panel.hidden = !on;
-        });
-        await renderPanel(id);
+        if (id === "docs") {
+          await openDoc(currentDoc || "readme");
+        } else {
+          history.replaceState(null, "", location.pathname);
+          await activateTab(id);
+        }
       });
     });
+
+    /*
+     * ⑥ 文件：把內嵌的 Markdown 轉成 HTML 顯示。
+     * 路徑一律用假網域 http://local/ 解析，讓 "../README.md"、"docs/architecture.md" 這類相對連結
+     * 都能對到同一把 key，不依賴 file:// 的 fetch（瀏覽器會擋）。
+     */
+    const PAGE_URL = "http://local/docs/codeGraphic.html";
+    const docs = {};
+    const docIdByPath = {};
+    document.querySelectorAll('script[type="text/markdown"][data-doc]').forEach((el) => {
+      const url = new URL(el.dataset.src, PAGE_URL);
+      const path = decodeURIComponent(url.pathname);
+      docs[el.dataset.doc] = { el, url, path, html: null };
+      docIdByPath[path] = el.dataset.doc;
+    });
+    const docBody = document.getElementById("doc-body");
+    const docMeta = document.getElementById("doc-meta");
+    const docButtons = document.querySelectorAll("[data-doc-btn]");
+    let currentDoc = null;
+
+    function toHtml(doc) {
+      const md = doc.el.textContent.replace(/<\\\/script/gi, "<" + "/script").trim();
+      if (!md) {
+        return '<p class="doc-error">此文件尚未嵌入內容，請執行 <code>.\\docs\\sync-codegraphic-docs.ps1</code>。</p>';
+      }
+      if (!window.marked) {
+        const pre = document.createElement("pre");
+        pre.textContent = md;
+        return '<p class="doc-error">Markdown 轉換器（marked CDN）載入失敗，以下顯示原文。</p>' + pre.outerHTML;
+      }
+      return marked.parse(md);
+    }
+
+    function rewriteLinks(root, baseUrl) {
+      root.querySelectorAll("a[href]").forEach((a) => {
+        const raw = a.getAttribute("href");
+        if (/^(https?:|mailto:)/i.test(raw)) {
+          a.target = "_blank";
+          a.rel = "noopener";
+          return;
+        }
+        if (raw.startsWith("#")) return;
+        const url = new URL(raw, baseUrl);
+        const path = decodeURIComponent(url.pathname);
+        const target = docIdByPath[path];
+        if (target) {
+          a.href = "#doc=" + target;
+          a.addEventListener("click", (e) => { e.preventDefault(); openDoc(target); });
+          return;
+        }
+        if (path === "/docs/codeGraphic.html") {
+          a.href = location.pathname;
+          a.addEventListener("click", (e) => { e.preventDefault(); history.replaceState(null, "", location.pathname); activateTab("roles"); });
+          return;
+        }
+        const rel = path.startsWith("/docs/") ? path.slice("/docs/".length) : ".." + path;
+        a.href = encodeURI(rel) + url.hash;
+        if (/\.md$/i.test(path)) {
+          a.classList.add("doc-external");
+          a.title = "未內嵌：以原始 .md 檔開啟";
+        }
+      });
+    }
+
+    async function openDoc(id) {
+      const doc = docs[id];
+      if (!doc) return;
+      currentDoc = id;
+      await activateTab("docs");
+      docButtons.forEach((b) => b.classList.toggle("active", b.dataset.docBtn === id));
+      if (doc.html === null) doc.html = toHtml(doc);
+      docBody.innerHTML = doc.html;
+      docBody.querySelectorAll("pre > code.language-mermaid").forEach((code) => {
+        const div = document.createElement("div");
+        div.className = "mermaid";
+        div.textContent = code.textContent;
+        code.parentElement.replaceWith(div);
+      });
+      rewriteLinks(docBody, doc.url);
+      const srcPath = doc.path.startsWith("/docs/") ? "docs/" + doc.path.slice("/docs/".length) : doc.path.slice(1);
+      docMeta.innerHTML = "來源：<code></code>（權威為 .md；本頁為內嵌副本）";
+      docMeta.querySelector("code").textContent = srcPath;
+      history.replaceState(null, "", "#doc=" + id);
+      panels.docs.scrollIntoView({ block: "start" });
+      const diagrams = docBody.querySelectorAll(".mermaid");
+      if (diagrams.length) {
+        try { await mermaid.run({ nodes: diagrams }); } catch (err) { console.error(err); }
+      }
+    }
+
+    docButtons.forEach((b) => b.addEventListener("click", () => openDoc(b.dataset.docBtn)));
+    document.querySelectorAll("[data-open-doc]").forEach((a) => {
+      a.addEventListener("click", (e) => { e.preventDefault(); openDoc(a.dataset.openDoc); });
+    });
+
+    const hashDoc = (location.hash.match(/^#doc=([\w-]+)/) || [])[1];
+    if (hashDoc && docs[hashDoc]) {
+      openDoc(hashDoc);
+    } else {
+      activateTab("roles");
+    }
   </script>
 </body>
 </html>

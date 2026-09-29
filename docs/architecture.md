@@ -64,6 +64,16 @@ outbox_events
 
 **狀態語意：** 成功＝Saga `COMPLETED`＋訂單 `FILLED`；補償＝Saga `COMPENSATED`＋訂單 `FAILED`。
 
+## 三組狀態（摘要）
+
+| | Saga | TCC 預留票 | 訂單 |
+|--|------|-----------|------|
+| 管什麼 | 流程走到哪 | 錢凍結／已扣／已退 | 使用者看到的結果 |
+| 庫 | orderdb | accountdb | orderdb |
+| 值 | `STARTED`…`COMPLETED`／`COMPENSATED` | `TRYING`／`CONFIRMED`／`CANCELLED` | `PENDING`／`FILLED`／`FAILED` |
+
+預留票先變、Saga 收到事件後才跟上（最終一致）。三情境逐步對照與常見誤會 → [狀態對照-Saga-TCC-訂單.md](狀態對照-Saga-TCC-訂單.md)。
+
 ## Outbox（發件匣）摘要
 
 中文：**發件匣**。訂單同 TX 寫入 `outbox_events`（待發），`OutboxRelayJob` 定時轉送 Kafka（提交後發訊）。  
