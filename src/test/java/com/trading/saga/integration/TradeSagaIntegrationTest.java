@@ -17,10 +17,13 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.time.Duration;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasItem;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <ul>
  *   <li>ACCOUNT-001：{@code GET /api/v1/accounts/ACC-001} → 200，種子餘額。</li>
  *   <li>TRADE-001：{@code GET /api/v1/trades/missing-order} → 404。</li>
+ *   <li>TRADE-002：壞掉的 JSON body → 400；{@code DELETE /api/v1/trades} → 405＋Allow。</li>
  *   <li>SAGA-001：下單 → Saga {@code COMPLETED}、available 90000。</li>
  *   <li>SAGA-002：餘額不足 → Saga {@code COMPENSATED}、餘額不變。</li>
  *   <li>TCC-002：forceFail → Try 後 Cancel → Saga {@code COMPENSATED}、餘額還原。</li>
@@ -49,8 +53,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 之後的流程在背景執行緒進行：Outbox 排程把 {@code RESERVE_FUNDS} 送進 Kafka → 帳戶側 TCC Try →
  * 發 event → 訂單側推進（{@code CONFIRM_FUNDS} 或補償）……所以 HTTP 回來當下 Saga 多半仍是
  * {@code ACCOUNT_TRYING}，必須用 Awaitility 輪詢 {@code GET /sagas/{id}} 等到終態才能斷言。
- * 同一個測試類別的方法共用快取的 Spring Context（DB 與記憶體軌跡不會自動清空），
- * 因此每個 Test 前都以 reset API 把帳戶還原成種子餘額。
+ * 同一個測試類別的方法共用快取的 Spring Context（DB 與記憶體軌跡不會自動清空），因此：
+ * <ul>
+ *   <li>每個 Test 前都以 reset API 把帳戶還原成種子餘額。</li>
+ *   <li>Kafka 軌跡斷言一律以 JsonPath 篩選本次的 sagaId（{@link #typesOf}），不會被前一個 Test 留下的訊息滿足。</li>
+ *   <li>每個下單的 Test 都等 Saga 走到終態才結束，避免背景流程（如晚到的 CONFIRM_FUNDS）在下一個 Test reset 後才扣款。</li>
+ * </ul>
  */
 // 標記為整合測試：build.gradle 的 test 任務排除此 tag、integrationTest 任務只跑此 tag；gradlew check 兩者都跑
 @Tag("integration")
@@ -133,6 +141,41 @@ class TradeSagaIntegrationTest {
                 .andExpect(jsonPath("$.message", containsString("missing-order")));
     }
 
+    /** TRADE-002：Given 語法錯誤的 JSON body，When POST /api/v1/trades，Then 400 而非 500，且不會建立 Saga。 */
+    @Test
+    @DisplayName("TRADE-002: POST malformed JSON → 400")
+    void malformedBody_400() throws Exception {
+        // ===== When：送出缺右大括號的 JSON =====
+        mockMvc.perform(post("/api/v1/trades")
+                        // 宣告為 JSON，Spring 才會交給 Jackson 解析並在解析失敗時丟 HttpMessageNotReadableException
+                        .contentType(MediaType.APPLICATION_JSON)
+                        // 故意少了結尾 }，Jackson 無法產生 TradeRequest
+                        .content("{\"accountId\":\"ACC-001\""))
+                // ===== Then：GlobalExceptionHandler.handleNotReadable 轉成 400 =====
+                // 期望 HTTP 400（呼叫端錯誤），而不是落到兜底的 500
+                .andExpect(status().isBadRequest())
+                // error 欄位為標準短語
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                // message 固定文字，不外洩 Jackson 解析細節
+                .andExpect(jsonPath("$.message").value("Malformed JSON request body"));
+    }
+
+    /** TRADE-002：Given /api/v1/trades 只支援 GET／POST，When 送 DELETE，Then 405 且 Allow header 列出 GET 與 POST。 */
+    @Test
+    @DisplayName("TRADE-002: DELETE /api/v1/trades → 405 + Allow")
+    void unsupportedMethod_405() throws Exception {
+        // ===== When：對下單路徑送不支援的 DELETE =====
+        // Spring MVC 找到路徑但沒有對應方法 → HttpRequestMethodNotSupportedException
+        mockMvc.perform(delete("/api/v1/trades"))
+                // ===== Then：GlobalExceptionHandler.handleMethodNotSupported 轉成 405 =====
+                // 期望 HTTP 405 Method Not Allowed
+                .andExpect(status().isMethodNotAllowed())
+                // Allow header 要同時含 GET 與 POST（順序由 Spring 決定，故只檢查包含）
+                .andExpect(header().string("Allow", allOf(containsString("GET"), containsString("POST"))))
+                // message 帶出被拒的方法名
+                .andExpect(jsonPath("$.message").value("Request method 'DELETE' is not supported"));
+    }
+
     /** SAGA-001：Given 種子餘額 100000，When 下單 1 × 10000，Then Saga COMPLETED、available 90000／frozen 0、軌跡含 RESERVE_FUNDS 與 FUNDS_CONFIRMED。 */
     @Test
     @DisplayName("SAGA-001: POST fixture → FILLED / COMPLETED, available 90000")
@@ -157,13 +200,13 @@ class TradeSagaIntegrationTest {
                 .andExpect(jsonPath("$.available").value(90000))
                 // Confirm 後凍結歸零（真正扣款，不退回 available）
                 .andExpect(jsonPath("$.frozen").value(0));
-        // ===== Then③：檢查 Kafka 軌跡 =====
+        // ===== Then③：檢查本次 Saga 的 Kafka 軌跡 =====
         // 查記憶體軌跡（EventLogService；KafkaTemplateMessageSender 每送出一則訊息就記一筆，新到舊）
         mockMvc.perform(get("/api/v1/events"))
-                // 所有軌跡的 type 中要有 RESERVE_FUNDS（Outbox 排程送出的 Try 命令）
-                .andExpect(jsonPath("$[*].type", hasItem("RESERVE_FUNDS")))
+                // 本次 sagaId 的軌跡要有 RESERVE_FUNDS（Outbox 排程送出的 Try 命令）
+                .andExpect(jsonPath(typesOf(sagaId), hasItem("RESERVE_FUNDS")))
                 // 也要有 FUNDS_CONFIRMED（帳戶側 Confirm 成功後發出的事件）
-                .andExpect(jsonPath("$[*].type", hasItem("FUNDS_CONFIRMED")));
+                .andExpect(jsonPath(typesOf(sagaId), hasItem("FUNDS_CONFIRMED")));
     }
 
     /** SAGA-002：Given 種子餘額 100000，When 下單 1 × 999999（餘額不足），Then Saga COMPENSATED、帳戶餘額不變。 */
@@ -217,22 +260,41 @@ class TradeSagaIntegrationTest {
                 .andExpect(jsonPath("$.frozen").value(0));
     }
 
-    /** OUTBOX-001：Given 下單成功寫入 Outbox，When 排程轉送，Then Kafka 軌跡最終出現 RESERVE_FUNDS。 */
+    /** OUTBOX-001：Given 下單成功寫入 Outbox，When 排程轉送，Then 本次 sagaId 的 Kafka 軌跡出現 RESERVE_FUNDS，且 Saga 最終 COMPLETED。 */
     @Test
     @DisplayName("OUTBOX-001: fixture place eventually publishes RESERVE_FUNDS")
     void outbox_reachesKafkaTrail() throws Exception {
         // ===== Given／When：以 OUTBOX-001 fixture 下單 =====
-        // body 與 SAGA-001 相同；下單交易內只把 RESERVE_FUNDS 寫進 outbox_events，尚未送 Kafka；回傳的 sagaId 這裡用不到
-        placeFixture("OUTBOX-001-RESERVE");
-        // ===== Then：等 Outbox 排程把命令真的送進 Kafka =====
+        // body 與 SAGA-001 相同；下單交易內只把 RESERVE_FUNDS 寫進 outbox_events，尚未送 Kafka
+        String sagaId = placeFixture("OUTBOX-001-RESERVE");
+        // ===== Then①：等 Outbox 排程把本次的命令真的送進 Kafka =====
         // OutboxRelayJob 每 50ms（見上方 TestPropertySource）呼叫 publishPending；送成功才會記進軌跡
         await().atMost(Duration.ofSeconds(12)).untilAsserted(() ->
                 // 查記憶體 Kafka 軌跡
                 mockMvc.perform(get("/api/v1/events"))
                         // 端點正常 → 200
                         .andExpect(status().isOk())
-                        // 等到軌跡中出現 RESERVE_FUNDS（證明「先落庫、後發送」的發件匣有運作）
-                        .andExpect(jsonPath("$[*].type", hasItem("RESERVE_FUNDS"))));
+                        // 只看本次 sagaId 的軌跡：出現 RESERVE_FUNDS 證明「先落庫、後發送」的發件匣有運作
+                        .andExpect(jsonPath(typesOf(sagaId), hasItem("RESERVE_FUNDS"))));
+        // ===== Then②：等 Saga 走到終態再結束 =====
+        // 流程仍在背景跑；若不等，晚到的 CONFIRM_FUNDS 可能在下一個 Test reset 帳戶後才扣款，污染其期望值
+        await().atMost(Duration.ofSeconds(12)).untilAsserted(() ->
+                mockMvc.perform(get("/api/v1/sagas/" + sagaId))
+                        // body 與 SAGA-001 相同，正常流程終點是 COMPLETED
+                        .andExpect(jsonPath("$.status").value("COMPLETED")));
+    }
+
+    /**
+     * 【職責】組出「只取指定 sagaId 的軌跡 type」的 JsonPath。
+     * 【技巧】JsonPath 篩選語法 {@code $[?(@.sagaId == 'x')].type}：{@code ?()} 逐筆過濾陣列元素，{@code @} 代表當前元素；
+     *         結果仍是陣列，可直接搭配 {@code hasItem(...)}。
+     * 【概念】EventLogService 是全應用共用的記憶體軌跡，跨 Test 不會清空；以 sagaId 篩選才能確定訊息屬於本次下單。
+     *
+     * @param sagaId 本次下單取得的 sagaId（UUID，不含單引號，可安全嵌入運算式）
+     * @return JsonPath 運算式
+     */
+    private static String typesOf(String sagaId) {
+        return "$[?(@.sagaId == '" + sagaId + "')].type";
     }
 
     /**

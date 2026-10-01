@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 【技巧】純 enum／純物件斷言，不啟動 Spring；合法邊用 {@code isTrue()}，非法邊用 {@code isFalse()}，
  * 並以 {@code assertThatThrownBy} 確認實體層真的會擋下非法轉移。
  * 【概念】成功：STARTED→ACCOUNT_TRYING→ACCOUNT_CONFIRMING→COMPLETED；
- * 失敗：任中段（STARTED／ACCOUNT_TRYING／ACCOUNT_CONFIRMING）→COMPENSATING→COMPENSATED。
+ * 失敗：任中段（STARTED／ACCOUNT_TRYING／ACCOUNT_CONFIRMING）→COMPENSATING→COMPENSATED（補償本身失敗則→FAILED）。
  * 終態（COMPLETED／COMPENSATED／FAILED）不可再轉，Kafka 重送事件時才不會把已結束的 Saga 改掉。
  */
 // 測試報告／IDE 上顯示的名稱
@@ -21,17 +21,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SagaStatusTest {
 
     /**
-     * SAGA-001：成功路徑上的每一跳都合法，且 COMPLETED 是終態；
-     * 另外驗證 STARTED 可直接進補償（Try 之前就失敗的情境）。
+     * SAGA-001：成功路徑上的每一跳都合法，且 COMPLETED 是終態。
      */
     @Test
     @DisplayName("SAGA-001 happy path transitions are allowed")
     void happyPath_allowed() {
-        // ===== Then①：從 STARTED 出發的合法邊 =====
-        // 正向第一跳：建立 Saga 後登記 RESERVE_FUNDS，進入等待帳戶 Try
+        // ===== Then①：正向第一跳 =====
+        // 建立 Saga 後登記 RESERVE_FUNDS，進入等待帳戶 Try
         assertThat(SagaStatus.STARTED.canTransitionTo(SagaStatus.ACCOUNT_TRYING)).isTrue();
-        // STARTED 也允許直接補償：任何非終態都能轉 COMPENSATING
-        assertThat(SagaStatus.STARTED.canTransitionTo(SagaStatus.COMPENSATING)).isTrue();
 
         // ===== Then②：正向後續兩跳 =====
         // 收到 FUNDS_RESERVED：從等待 Try 轉為等待 Confirm
@@ -45,12 +42,15 @@ class SagaStatusTest {
     }
 
     /**
-     * SAGA-002／TCC-002：Try 或 Confirm 階段失敗都能進入補償，補償收尾為 COMPENSATED 終態。
+     * SAGA-002／TCC-002：任一中段狀態（含 Try 之前的 STARTED）失敗都能進入補償，
+     * 補償收尾為 COMPENSATED 或 FAILED，兩者皆為終態。
      */
     @Test
     @DisplayName("SAGA-002 / TCC-002 compensation transitions are allowed")
     void compensationPath_allowed() {
         // ===== Then①：中段狀態都能轉補償 =====
+        // Try 之前就失敗（尚未送出 RESERVE_FUNDS）→ 也允許直接補償
+        assertThat(SagaStatus.STARTED.canTransitionTo(SagaStatus.COMPENSATING)).isTrue();
         // 等待 Try 時收到 FUNDS_FAILED（SAGA-002 餘額不足）→ 開始補償
         assertThat(SagaStatus.ACCOUNT_TRYING.canTransitionTo(SagaStatus.COMPENSATING)).isTrue();
         // 等待 Confirm 時收到 FUNDS_CANCELLED（TCC-002 forceFail）→ 開始補償
@@ -61,6 +61,14 @@ class SagaStatusTest {
         assertThat(SagaStatus.COMPENSATING.canTransitionTo(SagaStatus.COMPENSATED)).isTrue();
         // COMPENSATED 是終態：失敗路徑已正確收尾（不是系統出錯）
         assertThat(SagaStatus.COMPENSATED.isTerminal()).isTrue();
+
+        // ===== Then③：補償本身失敗的出口 =====
+        // 預留邊：補償也失敗時轉 FAILED（目前沒有程式設定，但規則表已允許）
+        assertThat(SagaStatus.COMPENSATING.canTransitionTo(SagaStatus.FAILED)).isTrue();
+        // FAILED 同樣是終態，前台看到即停止輪詢
+        assertThat(SagaStatus.FAILED.isTerminal()).isTrue();
+        // 終態不可再轉：FAILED 不能回到補償重來
+        assertThat(SagaStatus.FAILED.canTransitionTo(SagaStatus.COMPENSATING)).isFalse();
     }
 
     /**

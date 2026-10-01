@@ -17,9 +17,14 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 /**
- * 【職責】帳戶 command handler 單元：Try 成功發 RESERVED、失敗發 FAILED。
- * 覆蓋 {@link AccountCommandHandler} 的 {@code RESERVE_FUNDS} 分支（帳戶側 TCC 參與者），
- * 對應 Case SAGA-001（Try 成功 → {@code FUNDS_RESERVED}）與 SAGA-002（Try 失敗 → {@code FUNDS_FAILED}）。
+ * 【職責】帳戶 command handler 單元：三種命令各自回覆正確的結果事件。
+ * 覆蓋 {@link AccountCommandHandler} 的全部分支（帳戶側 TCC 參與者）：
+ * <ul>
+ *   <li>{@code RESERVE_FUNDS}：SAGA-001（Try 成功 → {@code FUNDS_RESERVED}）、SAGA-002（Try 失敗 → {@code FUNDS_FAILED}）。</li>
+ *   <li>{@code CONFIRM_FUNDS}：SAGA-001（Confirm 成功 → {@code FUNDS_CONFIRMED}）、
+ *       TCC-002（forceFail → {@code FUNDS_CANCELLED}）、Confirm 失敗且非 forceFail → {@code FUNDS_FAILED}。</li>
+ *   <li>{@code CANCEL_FUNDS}：一律 Cancel 後回 {@code FUNDS_CANCELLED}。</li>
+ * </ul>
  * 【技巧】
  * <ul>
  *   <li>{@link TccResource}／{@link KafkaMessageSender} 都是介面，直接 {@code @Mock}；
@@ -105,5 +110,107 @@ class AccountCommandHandlerTest {
         verify(kafkaMessageSender).send(eq("trading.saga.events"), eq("s2"), captor.capture());
         // tryReserve 回 false → 發 FUNDS_FAILED，訂單側收到後會呼叫 CompensationAction 把 Saga 收成 COMPENSATED
         assertThat(captor.getValue().type()).isEqualTo(SagaMessageTypes.FUNDS_FAILED);
+    }
+
+    /** SAGA-001：Given Confirm 成功（confirm 回 true），When 收到 CONFIRM_FUNDS（forceFail=false），Then 發出 FUNDS_CONFIRMED。 */
+    @Test
+    @DisplayName("SAGA-001: CONFIRM_FUNDS success → FUNDS_CONFIRMED")
+    void confirm_ok() {
+        // ===== Given：Confirm 會成功 =====
+        // forceFail=false 時真實的 AccountTccService.confirm 會消耗凍結並回 true
+        given(tccResource.confirm("s3", false)).willReturn(true);
+        // 手動組裝 Handler，event topic 同 application.yml 的 trading.kafka.event-topic
+        AccountCommandHandler handler = new AccountCommandHandler(
+                tccResource, kafkaMessageSender, "trading.saga.events");
+        // CONFIRM_FUNDS 命令由訂單側在收到 FUNDS_RESERVED 後組出；金額與 Try 相同
+        SagaMessage cmd = SagaMessage.of(
+                "s3", "o3", "ACC-001", SagaMessageTypes.CONFIRM_FUNDS,
+                new BigDecimal("10000"), "BTCUSDT", false);
+
+        // ===== When：走 CONFIRM_FUNDS 分支 =====
+        handler.onMessage(cmd);
+
+        // ===== Then：回覆 FUNDS_CONFIRMED =====
+        // 共用 helper 抓出送往 event topic、key＝s3 的結果事件 type
+        // 訂單側收到 FUNDS_CONFIRMED 後把訂單標 FILLED、Saga 標 COMPLETED
+        assertThat(publishedType("s3")).isEqualTo(SagaMessageTypes.FUNDS_CONFIRMED);
+    }
+
+    /** TCC-002：Given forceFail=true（confirm 內部改走 Cancel 並回 false），When 收到 CONFIRM_FUNDS，Then 發出 FUNDS_CANCELLED。 */
+    @Test
+    @DisplayName("TCC-002: CONFIRM_FUNDS forceFail → FUNDS_CANCELLED")
+    void confirm_forceFail_cancelled() {
+        // ===== Given：forceFail 讓 Confirm 回 false =====
+        // 真實的 AccountTccService.confirm(sagaId, true) 會先 cancel 把凍結還給 available，再回 false
+        given(tccResource.confirm("s4", true)).willReturn(false);
+        AccountCommandHandler handler = new AccountCommandHandler(
+                tccResource, kafkaMessageSender, "trading.saga.events");
+        // 命令的 forceFail=true：Handler 據此判斷「false 是因為教學取消」而不是真的失敗
+        SagaMessage cmd = SagaMessage.of(
+                "s4", "o4", "ACC-001", SagaMessageTypes.CONFIRM_FUNDS,
+                new BigDecimal("10000"), "BTCUSDT", true);
+
+        // ===== When：走 CONFIRM_FUNDS 分支 =====
+        handler.onMessage(cmd);
+
+        // ===== Then：回覆 FUNDS_CANCELLED（不是 FUNDS_FAILED）=====
+        // 錢已還原，訂單側收到後走補償，Saga 收成 COMPENSATED
+        assertThat(publishedType("s4")).isEqualTo(SagaMessageTypes.FUNDS_CANCELLED);
+    }
+
+    /** Given confirm 回 false 且 forceFail=false（TccResource 契約允許的失敗），When 收到 CONFIRM_FUNDS，Then 發出 FUNDS_FAILED。 */
+    @Test
+    @DisplayName("CONFIRM_FUNDS failure without forceFail → FUNDS_FAILED")
+    void confirm_fail_failed() {
+        // ===== Given：Confirm 失敗、且不是教學取消 =====
+        // 本版 AccountTccService 不會走到這裡（查無預留票會丟例外），但 TccResource 介面允許其他實作回 false
+        given(tccResource.confirm("s5", false)).willReturn(false);
+        AccountCommandHandler handler = new AccountCommandHandler(
+                tccResource, kafkaMessageSender, "trading.saga.events");
+        SagaMessage cmd = SagaMessage.of(
+                "s5", "o5", "ACC-001", SagaMessageTypes.CONFIRM_FUNDS,
+                new BigDecimal("10000"), "BTCUSDT", false);
+
+        // ===== When：走 CONFIRM_FUNDS 分支 =====
+        handler.onMessage(cmd);
+
+        // ===== Then：回覆 FUNDS_FAILED =====
+        // ok=false 且 forceFail=false → 三元運算子選 FUNDS_FAILED，訂單側一樣走補償
+        assertThat(publishedType("s5")).isEqualTo(SagaMessageTypes.FUNDS_FAILED);
+    }
+
+    /** Given 收到 CANCEL_FUNDS，When Handler 處理，Then 呼叫 cancel 並發出 FUNDS_CANCELLED。 */
+    @Test
+    @DisplayName("CANCEL_FUNDS → cancel + FUNDS_CANCELLED")
+    void cancel_cancelled() {
+        // ===== Given：cancel 是 void，mock 預設什麼都不做，不必 stub =====
+        AccountCommandHandler handler = new AccountCommandHandler(
+                tccResource, kafkaMessageSender, "trading.saga.events");
+        SagaMessage cmd = SagaMessage.of(
+                "s6", "o6", "ACC-001", SagaMessageTypes.CANCEL_FUNDS,
+                new BigDecimal("10000"), "BTCUSDT", false);
+
+        // ===== When：走 CANCEL_FUNDS 分支 =====
+        handler.onMessage(cmd);
+
+        // ===== Then①：確實呼叫了 TCC Cancel =====
+        // 以 sagaId 找預留票釋放凍結；可安全重入（查無票或已取消皆不報錯）
+        verify(tccResource).cancel("s6");
+        // ===== Then②：回覆 FUNDS_CANCELLED =====
+        // Cancel 沒有失敗分支，一律回報已取消
+        assertThat(publishedType("s6")).isEqualTo(SagaMessageTypes.FUNDS_CANCELLED);
+    }
+
+    /**
+     * 【職責】驗證 Handler 對 event topic 送出剛好一則、key＝sagaId 的事件，並回傳該事件的 type。
+     * 【技巧】{@link ArgumentCaptor} 抓 {@code send(...)} 第 3 個參數；{@code verify} 預設即「剛好 1 次」。
+     *
+     * @param sagaId 預期的 Kafka key
+     * @return 送出事件的 type
+     */
+    private String publishedType(String sagaId) {
+        ArgumentCaptor<SagaMessage> captor = ArgumentCaptor.forClass(SagaMessage.class);
+        verify(kafkaMessageSender).send(eq("trading.saga.events"), eq(sagaId), captor.capture());
+        return captor.getValue().type();
     }
 }

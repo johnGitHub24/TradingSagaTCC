@@ -85,6 +85,7 @@ HTTP：請求合法即 **202**（Saga 已建）；終態靠輪詢 `GET /api/v1/s
 | SAGA-002 | 帳戶不足時領域拒絕 Try | POST 超額 → COMPENSATED，帳戶不變 | 餘額不足 |
 | TCC-002 | Try 後 Cancel 還原 available | `forceFail=true` → COMPENSATED，帳戶還原 | 故意失敗 |
 | TRADE-001 | 查單不存在丟 404 語意 | GET 未知訂單 404 | 錯誤路徑 |
+| TRADE-002 | 框架例外不落兜底 500 | POST 壞 JSON → 400；DELETE `/api/v1/trades` → 405＋Allow | 錯誤路徑 |
 | ACCOUNT-001 | 查得到種子帳戶 | GET ACC-001 200 | 查餘額 |
 | OUTBOX-001 | append 後 unpublished | 下單後 command topic 有訊息 | Outbox→Kafka |
 

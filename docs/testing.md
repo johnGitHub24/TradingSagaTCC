@@ -23,17 +23,21 @@
 | OUTBOX-001 | `trade/OUTBOX-001-RESERVE.json` | Outbox 軌跡 |
 | ACCOUNT-001 | `account/ACCOUNT-001-SEED.json` | 種子餘額期望 |
 | TRADE-001 | （無 body；GET 404） | 未知訂單 |
+| TRADE-002 | （inline 壞 JSON／DELETE） | 400／405 錯誤形狀 |
 
 ## Case（單元 ↔ 整合成對）
 
 | Case | 單元 | 整合 |
 |------|------|------|
-| SAGA-001 | `SagaOrchestratorTest`、`AccountTest` Try-Confirm、`AccountTccServiceTest` confirm | POST fixture → COMPLETED／available 90000 |
-| SAGA-002 | `AccountTest` 不足、`AccountTccServiceTest` false、`OrderMarkFailedActionTest` | POST fixture → COMPENSATED／餘額不變 |
-| TCC-002 | `AccountTest` Try-Cancel、`AccountTccServiceTest` forceFail | forceFail fixture → COMPENSATED／餘額還原 |
-| TRADE-001 | `TradeQueryServiceTest`、`GlobalExceptionHandlerTest` | GET 未知訂單 404 |
+| SAGA-001 | `SagaOrchestratorTest`、`TradeOrderTest` 金額 scale 4、`AccountTest` Try-Confirm、`AccountTccServiceTest` confirm、`AccountCommandHandlerTest` RESERVED／CONFIRMED、`SagaStatusTest` 正向 | POST fixture → COMPLETED／available 90000／本次 sagaId 軌跡含 RESERVE_FUNDS＋FUNDS_CONFIRMED |
+| SAGA-002 | `AccountTest` 不足、`AccountTccServiceTest` false、`AccountCommandHandlerTest` FAILED、`OrderMarkFailedActionTest`、`SagaStatusTest` 補償 | POST fixture → COMPENSATED／餘額不變 |
+| TCC-002 | `AccountTest` Try-Cancel、`AccountTccServiceTest` forceFail、`AccountCommandHandlerTest` CANCELLED、`OrderMarkFailedActionTest`、`SagaStatusTest` 補償 | forceFail fixture → COMPENSATED／餘額還原 |
+| TRADE-001 | `TradeQueryServiceTest`、`GlobalExceptionHandlerTest` 404 | GET 未知訂單 404 |
+| TRADE-002 | `GlobalExceptionHandlerTest` 400／405 | POST 壞 JSON → 400；DELETE `/api/v1/trades` → 405＋Allow |
 | ACCOUNT-001 | `AccountQueryServiceTest` | GET ACC-001 200（對照 seed JSON） |
-| OUTBOX-001 | `OutboxPublisherServiceTest`、`SagaOrchestratorTest` | events 含 `RESERVE_FUNDS` |
+| OUTBOX-001 | `OutboxPublisherServiceTest`、`SagaOrchestratorTest` | 本次 sagaId 軌跡含 `RESERVE_FUNDS`，並等到 COMPLETED |
+
+**整合測試隔離：** 同一類別共用 Spring Context，記憶體 Kafka 軌跡不會清空。軌跡斷言一律以 JsonPath `$[?(@.sagaId == '…')]` 篩本次 sagaId；每個下單 Test 都等 Saga 終態才結束，避免背景流程跨 Test 扣款。
 
 ## DoD
 

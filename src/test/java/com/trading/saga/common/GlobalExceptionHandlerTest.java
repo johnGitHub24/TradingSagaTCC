@@ -5,15 +5,20 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.http.MockHttpInputMessage;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 【職責】靜態 404 不可被兜成 500；領域 404 穩定。
- * 覆蓋 {@link GlobalExceptionHandler}（Web 層例外轉換）；第二個 Test 對應 Case TRADE-001 的 404 JSON 契約。
+ * 覆蓋 {@link GlobalExceptionHandler}（Web 層例外轉換）；對應 Case TRADE-001（404 JSON 契約）
+ * 與 TRADE-002（JSON 壞掉 400、方法不支援 405，不可落到兜底 500）。
  * 【技巧】不啟動 Spring、不用 MockMvc：直接 new 出 Handler，手動建立例外後呼叫對應的
  * {@code @ExceptionHandler} 方法，只驗證「例外 → HTTP 狀態碼＋JSON body」這段轉換。
  * 【概念】{@code @RestControllerAdvice} 會攔截 Controller 丟出的例外並回傳統一格式
@@ -74,5 +79,56 @@ class GlobalExceptionHandlerTest {
         // ===== Then②：JSON body 的 message =====
         // message 直接取自例外訊息，前端／整合測試（jsonPath $.message）依此顯示與斷言
         assertThat(response.getBody().get("message")).isEqualTo("Order not found: missing");
+    }
+
+    /**
+     * TRADE-002：Given Jackson 解析 body 失敗，When 交給 Handler，
+     * Then 回 400、error 為 "Bad Request"，且 message 固定、不外洩解析細節。
+     */
+    @Test
+    @DisplayName("TRADE-002: HttpMessageNotReadableException → 400")
+    void malformedBody_400() {
+        // ===== Given：模擬 Spring MVC 讀 body 失敗時丟出的例外 =====
+        // 第 2 個參數是原始請求內容；MockHttpInputMessage（spring-test）以空 byte[] 充當即可
+        HttpMessageNotReadableException ex = new HttpMessageNotReadableException(
+                "JSON parse error: Unexpected character", new MockHttpInputMessage(new byte[0]));
+
+        // ===== When：呼叫 body 解析失敗的處理方法 =====
+        ResponseEntity<Map<String, Object>> response = handler.handleNotReadable(ex);
+
+        // ===== Then①：HTTP 狀態碼 =====
+        // 呼叫端送錯格式 → 400，而不是被兜底轉成 500
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        // ===== Then②：JSON body =====
+        // error 欄位固定為 HTTP 狀態的標準短語
+        assertThat(response.getBody().get("error")).isEqualTo("Bad Request");
+        // message 是固定文字，不帶 Jackson 原始訊息（避免外洩類別名稱等內部細節）
+        assertThat(response.getBody().get("message")).isEqualTo("Malformed JSON request body");
+    }
+
+    /**
+     * TRADE-002：Given 對只支援 GET／POST 的路徑送 DELETE，When 交給 Handler，
+     * Then 回 405、{@code Allow} header 列出 GET 與 POST，message 含被拒的方法名。
+     */
+    @Test
+    @DisplayName("TRADE-002: HttpRequestMethodNotSupportedException → 405 + Allow")
+    void methodNotSupported_405() {
+        // ===== Given：模擬 /api/v1/trades 收到 DELETE =====
+        // 建構子參數：被拒的方法、該路徑實際支援的方法（TradeController 對 /api/v1/trades 只有 GET 與 POST）
+        HttpRequestMethodNotSupportedException ex =
+                new HttpRequestMethodNotSupportedException("DELETE", List.of("GET", "POST"));
+
+        // ===== When：呼叫方法不支援的處理方法 =====
+        ResponseEntity<Map<String, Object>> response = handler.handleMethodNotSupported(ex);
+
+        // ===== Then①：HTTP 狀態碼 =====
+        // 路徑存在但方法不對 → 405
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+        // ===== Then②：Allow header =====
+        // getAllow() 讀回 Allow header 解析出的方法集合；必須正好是 GET、POST（順序不拘）
+        assertThat(response.getHeaders().getAllow()).containsExactlyInAnyOrder(HttpMethod.GET, HttpMethod.POST);
+        // ===== Then③：JSON body =====
+        // message 帶出被拒的方法名，方便呼叫端定位錯誤
+        assertThat(response.getBody().get("message")).isEqualTo("Request method 'DELETE' is not supported");
     }
 }

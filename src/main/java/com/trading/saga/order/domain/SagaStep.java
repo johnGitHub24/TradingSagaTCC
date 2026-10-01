@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,7 +24,8 @@ import java.time.Instant;
  * 【邊界】不是 Kafka 本體；Kafka 軌跡另見記憶體 EventLog（{@code EventLogService}）。
  */
 @Entity
-@Table(name = "saga_steps")
+// saga_id 索引：TradeQueryService.getSaga 以 findBySagaIdOrderByAtAscIdAsc 查時間軸，避免全表掃描（hbm2ddl 建表時一併建立）
+@Table(name = "saga_steps", indexes = @Index(name = "idx_saga_steps_saga_id", columnList = "saga_id"))
 @Getter
 @NoArgsConstructor
 public class SagaStep {

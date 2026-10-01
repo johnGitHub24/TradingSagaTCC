@@ -2,9 +2,12 @@ package com.trading.saga.common;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -13,6 +16,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 【職責】例外 → 穩定 JSON；靜態資源缺失必須 404 而非 500。
@@ -26,6 +30,8 @@ import java.util.Map;
  * <ul>
  *   <li>{@link ResourceNotFoundException}（訂單／Saga／帳戶不存在）→ 404</li>
  *   <li>{@link NoResourceFoundException}（找不到靜態檔，如 favicon）→ 404</li>
+ *   <li>{@link HttpMessageNotReadableException}（body 不是合法 JSON、型別轉不過去）→ 400</li>
+ *   <li>{@link HttpRequestMethodNotSupportedException}（路徑存在但方法不支援）→ 405＋{@code Allow} header</li>
  *   <li>{@link MethodArgumentNotValidException}（{@code @Valid} 失敗）→ 422</li>
  *   <li>其他未列出的例外 → 500，訊息固定、不外洩內部細節</li>
  * </ul>
@@ -65,6 +71,42 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 【職責】請求 body 讀不懂 → 400。
+     * 【概念】與 422 的分界：400＝連 JSON 都解析不了（語法錯、數字欄位給字串），根本產生不出 {@code TradeRequest}；
+     *         422＝JSON 正確但內容違反驗證規則。若沒有這個 handler，會落到兜底變成 500，誤導呼叫端以為是伺服器錯。
+     *         message 固定，不回傳 Jackson 的原始錯誤（內含類別名稱等內部細節）。
+     *
+     * @param ex Jackson 反序列化失敗
+     * @return 400 + 錯誤 JSON
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleNotReadable(HttpMessageNotReadableException ex) {
+        log.warn("Malformed request body: {}", ex.getMostSpecificCause().getMessage());
+        return build(HttpStatus.BAD_REQUEST, "Bad Request", "Malformed JSON request body");
+    }
+
+    /**
+     * 【職責】HTTP 方法不支援 → 405，並帶 {@code Allow} header。
+     * 【技巧】{@link HttpRequestMethodNotSupportedException#getSupportedHttpMethods()} 取該路徑支援的方法，
+     *         寫進 {@code Allow}（RFC 9110 要求 405 回應附上）；取不到時省略 header。
+     * 【概念】例如對 {@code /api/v1/trades} 送 DELETE：路徑存在、方法不對，屬呼叫端錯誤而非 500。
+     *
+     * @param ex Spring MVC 找不到對應方法的 handler
+     * @return 405 + 錯誤 JSON（message 含被拒的方法名）
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        log.warn("Method not supported: {}", ex.getMethod());
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+        Set<HttpMethod> supported = ex.getSupportedHttpMethods();
+        if (supported != null && !supported.isEmpty()) {
+            builder.allow(supported.toArray(HttpMethod[]::new));
+        }
+        return builder.body(body(HttpStatus.METHOD_NOT_ALLOWED, "Method Not Allowed",
+                "Request method '" + ex.getMethod() + "' is not supported"));
+    }
+
+    /**
      * 【職責】{@code @Valid} 失敗 → 422，附欄位層級錯誤。
      * 【技巧】把 {@link FieldError} 攤平成 {@code 欄位名 → 訊息} 的 Map，前台可直接標在對應輸入框。
      * 【概念】用 422（Unprocessable Entity）而非 400：JSON 格式正確，只是內容不符規則，
@@ -90,8 +132,8 @@ public class GlobalExceptionHandler {
      * 【職責】兜底 → 500。
      * 【概念】回應只給固定訊息，避免把 stack trace／SQL 等內部細節外洩給呼叫端；
      *         完整例外寫進 error log 供排查。
-     * 【邊界】本類沒有個別處理 Spring MVC 的框架例外（例如 JSON 解析失敗、不支援的 HTTP 方法），
-     *         它們也會落到這裡成為 500。
+     * 【邊界】JSON 解析失敗（400）、不支援的 HTTP 方法（405）已由上方 handler 認領；
+     *         其餘未個別處理的 Spring MVC 框架例外（如不支援的 Content-Type）仍會落到這裡成為 500。
      *
      * @param ex 未被上方 handler 認領的任何例外
      * @return 500 + 錯誤 JSON

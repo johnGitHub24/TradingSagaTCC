@@ -29,7 +29,10 @@ OpenAPI：`/swagger-ui.html`、`/v3/api-docs`
 | price | 必填、> 0 |
 | forceFail | 可省略，預設 false；true 時帳戶 Confirm 改走 Cancel |
 
-驗證失敗 → **422** `{ error, message, fieldErrors }`。
+驗證失敗 → **422** `{ error, message, fieldErrors }`。  
+body 不是合法 JSON（語法錯、型別轉不過去）→ **400**，`message` 固定為 `Malformed JSON request body`。
+
+`amount` = quantity × price，以 HALF_UP 捨入到 **4 位小數**（與 DB 欄位 scale 一致）；202 回應、Kafka 命令與 DB 三處金額相同。
 
 ## GET /api/v1/trades
 
@@ -102,3 +105,11 @@ Kafka 軌跡（記憶體 ring，最多 100 筆，新到舊）。
   "message": "..."
 }
 ```
+
+| 狀態 | 情境 |
+|------|------|
+| 400 | body 不是合法 JSON |
+| 404 | 訂單／Saga／帳戶不存在；靜態資源不存在 |
+| 405 | 路徑存在但 HTTP 方法不支援（回應附 `Allow` header） |
+| 422 | `@Valid` 驗證失敗（多 `fieldErrors`） |
+| 500 | 其他未預期錯誤（訊息固定，不外洩內部細節） |
