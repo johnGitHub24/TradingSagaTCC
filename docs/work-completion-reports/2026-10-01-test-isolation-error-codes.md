@@ -25,7 +25,8 @@
 |----|------|------|
 | EOS-LOOP-WORK | 已跑 | 上表各檔 |
 | EOS-HARNESS-CHECK | 已跑 | `gradlew check` → BUILD SUCCESSFUL；unit 32／integration 8，0 failure |
-| EOS-LOOP-RELEASE | 已跑（API L1） | `bootRun` + `docs\run-api-smoke.ps1` → `ALL_API_SMOKE_OK`；TRADE-002 手動驗證 |
+| EOS-LOOP-RELEASE | 已跑（L1 API＋UI） | `bootRun` + `docs\run-release-gate.ps1 -SkipCheck` → `ALL_RELEASE_GATE_OK`；TRADE-002 手動驗證 |
+| EOS-LOOP-SYNC | 已跑 | `eos-minimal/feedback/SYNC_LOG.md` 2026-10-01 scan-paired-tests 編碼誤報 |
 
 ### Runtime Smoke（`EOS-LOOP-RELEASE`）
 
@@ -42,13 +43,21 @@ UI automation: N/A（本次未改前端）
 EOS-GRAPH: N/A — 單 Agent
 ```
 
+### 完整複驗（同日 15:54，commit `a999da3` 之上）
+
+```text
+clean check: gradlew clean check → BUILD SUCCESSFUL；unit 32／integration 8，0 failure／0 error／0 skipped
+Release Gate: bootRun + docs\run-release-gate.ps1 -SkipCheck → ALL_API_SMOKE_OK + ALL_UI_SMOKE_OK → ALL_RELEASE_GATE_OK
+UI automation: PASS（runner.html 四劇情 PASS；BROWSER 404 log 為預期的 404 請求，如 TRADE-001 查無訂單，非失敗）
+scan-paired-tests: exit 1 為感測器讀檔編碼誤報（cp950 截斷 Case ID）；UTF-8 重掃 7 個 Case 全成對 → 已回寫 SYNC_LOG
+```
+
 ## N/A
 
 | ID | 理由 |
 |----|------|
 | EOS-LOOP-PR | 直接 commit main，未開 PR |
-| EOS-HARNESS-EOS | 未改公版 |
-| UI Smoke | 前端未變更 |
+| EOS-HARNESS-EOS | 未改公版腳本（僅 SYNC_LOG 回寫） |
 
 ## 對話面板
 
