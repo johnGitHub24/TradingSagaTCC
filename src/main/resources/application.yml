@@ -1,40 +1,47 @@
+# TradingSagaTCC 本機預設設定：雙 H2（訂單庫／帳戶庫）+ 內嵌 Kafka，bootRun 不需 Docker。
+# 整合測試以 @SpringBootTest properties 覆寫（如 trading.kafka.embedded=false、startup.info.enabled=false）。
+
 server:
-  port: 8093
+  port: 8093  # 專案固定埠（StartupInfoLogger 組 URL 也讀這個值）
 
 spring:
   application:
     name: trading-saga-tcc
   h2:
     console:
-      enabled: true
+      enabled: true  # 開 /h2-console；JDBC URL 填下方 trading.datasource.order／account.url 擇一連線
       path: /h2-console
   jackson:
     serialization:
-      write-dates-as-timestamps: false
+      write-dates-as-timestamps: false  # Instant 輸出 ISO-8601 字串，前台可直接顯示
+  # 只放序列化設定，不設 bootstrap-servers：內嵌模式由 EmbeddedKafkaConfig 於執行期注入 broker 位址
   kafka:
     producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer  # key＝sagaId
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
-        spring.json.add.type.headers: false
+        spring.json.add.type.headers: false  # 不寫 Java 型別 header，訊息格式與類別名稱解耦
     consumer:
-      auto-offset-reset: earliest
+      auto-offset-reset: earliest  # 新 consumer group 從頭讀，啟動前已送出的訊息不會漏收
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"
-        spring.json.use.type.headers: false
-        spring.json.value.default.type: com.trading.saga.messaging.SagaMessage
+        spring.json.trusted.packages: "*"  # 允許反序列化任何套件（僅限 Demo；正式環境應列白名單）
+        spring.json.use.type.headers: false  # 對應 producer 不送型別 header
+        spring.json.value.default.type: com.trading.saga.messaging.SagaMessage  # 無 header 時一律解成 SagaMessage
 
+# 本專案自訂設定（非 Spring Boot 內建鍵）
 trading:
   kafka:
-    embedded: true
-    command-topic: trading.saga.commands
-    event-topic: trading.saga.events
+    embedded: true  # true／未設＝啟用 EmbeddedKafkaConfig 內嵌 broker；false＝接外部 Kafka（需給 spring.kafka.bootstrap-servers）
+    command-topic: trading.saga.commands  # 編排器 → 帳戶 TCC（RESERVE_FUNDS／CONFIRM_FUNDS／CANCEL_FUNDS）
+    event-topic: trading.saga.events  # 帳戶 TCC → 編排器（FUNDS_RESERVED／CONFIRMED／FAILED／CANCELLED）
   outbox:
-    poll-ms: 200
+    poll-ms: 200  # OutboxRelayJob 輪詢發件匣的間隔（fixedDelay，毫秒）
+  # 雙庫：由 OrderDataSourceConfig／AccountDataSourceConfig 綁定（主類別已排除 DataSource 自動設定，spring.datasource.* 不生效）
   datasource:
     order:
+      # DB_CLOSE_DELAY=-1：最後一條連線關閉後仍保留記憶體庫；MODE=PostgreSQL 讓 SQL 行為貼近正式庫
       url: jdbc:h2:mem:orderdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
       username: sa
       password: ""
@@ -49,26 +56,28 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info  # 只開健康檢查與資訊；StartupInfoLogger 會探測這兩個端點
   health:
     db:
-      enabled: false
+      enabled: false  # 關閉 DB 健康指標：/actuator/health 只反映應用存活，不逐一檢查雙庫連線
 
+# StartupInfoLogger 啟動框線開關（開發便利，非 Gate）
 startup:
   info:
-    enabled: true
+    enabled: true  # 總開關；整合測試設 false
     project-name: TradingSagaTCC
-    frontend: static
-    auth: false
-    h2: true
-    api-docs: true
-    probe: true
+    frontend: static  # static＝印同埠 Vue 首頁連結（src/main/resources/static/）
+    auth: false  # 本專案無 Security；與公版欄位對齊，StartupInfoLogger 目前未讀取
+    h2: true  # 印 H2 Console 與雙庫 JDBC URL
+    api-docs: true  # 印 Swagger UI／OpenAPI JSON 連結
+    probe: true  # 對每個 HTTP 連結發 GET 標 UP／DOWN
     home-path: /
 
 springdoc:
   swagger-ui:
-    path: /swagger-ui.html
+    path: /swagger-ui.html  # Swagger UI 入口（實際會轉址到 /swagger-ui/index.html）
 
+# 內嵌 Kafka／ZooKeeper 啟動時 log 很多，壓到 WARN 以免淹沒業務 log
 logging:
   level:
     org.apache.kafka: WARN
