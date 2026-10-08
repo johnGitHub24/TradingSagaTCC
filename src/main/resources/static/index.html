@@ -97,6 +97,34 @@
     .side-account { background: #0f766e; color: #fff; }
     .side-live { background: #6d28d9; color: #fff; }
     .order-row { cursor: pointer; }
+
+    /* ── DASH-004 呼叫鏈 tooltip（hover 區塊／按鈕／時間軸列） ── */
+    [data-trace] { cursor: help; }
+    .tl-row[data-trace], .sm-stage[data-trace] { cursor: pointer; }
+    .trace-tip { position: fixed; z-index: 2000; width: min(440px, calc(100vw - 16px)); background: #0b1220; color: #e2e8f0;
+                 border: 1px solid #3b82f6; border-radius: .5rem; padding: .6rem .75rem; font-size: .8rem;
+                 box-shadow: 0 8px 28px rgba(0,0,0,.55); }
+    .trace-tip.above { transform: translateY(-100%); }
+    .trace-head { display: flex; align-items: center; gap: .45rem; margin-bottom: .4rem; flex-wrap: wrap; }
+    .trace-head code { color: #fde68a; }
+    .trace-kind { font-size: .7rem; font-weight: 700; padding: .05rem .45rem; border-radius: .3rem; }
+    .kind-HTTP { background: #2563eb; color: #fff; }
+    .kind-KAFKA { background: #0f766e; color: #fff; }
+    .kind-SCHEDULED { background: #7c3aed; color: #fff; }
+    .kind-NONE { background: #475569; color: #fff; }
+    .trace-chain { list-style: none; padding: 0; margin: 0 0 .4rem; }
+    .trace-chain li { display: flex; align-items: center; gap: .4rem; padding: .1rem 0; }
+    .trace-chain li + li::before { content: '↳'; color: #64748b; margin-left: .2rem; }
+    .trace-chain code { color: #e2e8f0; background: #1e293b; padding: 0 .3rem; border-radius: .2rem; }
+    .trace-layer { font-size: .65rem; min-width: 4.6rem; text-align: center; padding: .02rem .3rem; border-radius: .25rem; color: #0b1220; }
+    .layer-Controller { background: #93c5fd; }
+    .layer-Listener { background: #5eead4; }
+    .layer-Handler { background: #a7f3d0; }
+    .layer-Service { background: #fcd34d; }
+    .layer-Scheduler { background: #c4b5fd; }
+    .layer-Infra { background: #cbd5e1; }
+    .layer-Domain { background: #f9a8d4; }
+    .trace-zh { color: #94a3b8; line-height: 1.45; }
   </style>
 </head>
 <body>
@@ -137,7 +165,7 @@
             <div class="small muted">帳戶 ACC-001</div>
             <div>available <strong data-testid="acc-available">{{ account.available ?? '—' }}</strong></div>
             <div class="small">frozen <strong>{{ account.frozen ?? '—' }}</strong> · total <strong>{{ account.total ?? '—' }}</strong></div>
-            <button class="btn btn-sm btn-outline-warning mt-1" @click="resetAccount" :disabled="loading" data-testid="btn-reset">還原種子 100000</button>
+            <button class="btn btn-sm btn-outline-warning mt-1" @click="resetAccount" :disabled="loading" data-testid="btn-reset" data-trace="action:reset">還原種子 100000</button>
           </div>
           <div class="col-6 col-lg-2">
             <label class="form-label small mb-1">數量</label>
@@ -148,13 +176,13 @@
             <input v-model.number="form.price" type="number" min="0.0001" step="1" class="form-control form-control-sm" />
           </div>
           <div class="col-lg-5 d-flex flex-wrap gap-2">
-            <button class="btn btn-success flex-fill" @click="place(false)" :disabled="loading" data-testid="btn-saga-001">
+            <button class="btn btn-success flex-fill" @click="place(false)" :disabled="loading" data-testid="btn-saga-001" data-trace="action:place">
               成功路徑（SAGA-001）
             </button>
-            <button class="btn btn-warning flex-fill" @click="placeInsufficient" :disabled="loading" data-testid="btn-saga-002">
+            <button class="btn btn-warning flex-fill" @click="placeInsufficient" :disabled="loading" data-testid="btn-saga-002" data-trace="action:place">
               餘額不足（SAGA-002）
             </button>
-            <button class="btn btn-danger flex-fill" @click="place(true)" :disabled="loading" data-testid="btn-tcc-002">
+            <button class="btn btn-danger flex-fill" @click="place(true)" :disabled="loading" data-testid="btn-tcc-002" data-trace="action:place">
               故意失敗補償（TCC-002）
             </button>
           </div>
@@ -191,6 +219,10 @@
           <div class="form-check form-switch mb-0 small">
             <input class="form-check-input" type="checkbox" id="autoReplay" v-model="autoReplay" />
             <label class="form-check-label" for="autoReplay">完成後自動重播</label>
+          </div>
+          <div class="form-check form-switch mb-0 small" title="滑鼠停在狀態區塊／按鈕／時間軸列上，顯示是哪個 Controller／Listener → Service → 方法改的">
+            <input class="form-check-input" type="checkbox" id="showTrace" v-model="showTrace" data-testid="toggle-trace" />
+            <label class="form-check-label" for="showTrace">顯示呼叫鏈</label>
           </div>
         </div>
       </div>
@@ -230,7 +262,7 @@
                   <td colspan="5" class="text-center muted py-3">尚未選擇交易</td>
                 </tr>
                 <tr v-for="(f, i) in timeline" :key="i" class="tl-row" :class="{ 'tl-current': replayIndex === i }"
-                    data-testid="timeline-row" @click="jumpTo(i)">
+                    data-testid="timeline-row" :data-trace="f.trace" @click="jumpTo(i)">
                   <td>{{ i + 1 }}</td>
                   <td class="small text-nowrap">{{ fmtOffset(f.offsetMs) }}</td>
                   <td><span class="side-chip" :class="'side-' + f.side">{{ f.sideZh }}</span></td>
@@ -300,6 +332,21 @@
         </section>
       </div>
     </div>
+  </div>
+
+  <!-- DASH-004 呼叫鏈 tooltip：內容來自 /code-trace.json（反射測試保證與程式碼一致） -->
+  <div v-if="tip" class="trace-tip" :class="{ above: tip.above }" :style="{ left: tip.x + 'px', top: tip.y + 'px' }"
+       data-testid="trace-tip" :data-trace-key="tip.trace.key" @mouseenter="keepTip" @mouseleave="hideTip">
+    <div class="trace-head">
+      <span class="trace-kind" :class="'kind-' + tip.trace.kind">{{ tip.trace.kindZh }}</span>
+      <code>{{ tip.trace.entry }}</code>
+    </div>
+    <ol v-if="tip.trace.steps.length" class="trace-chain">
+      <li v-for="(s, i) in tip.trace.steps" :key="i" :title="s.ref">
+        <span class="trace-layer" :class="'layer-' + s.layer">{{ s.layer }}</span><code>{{ s.label }}</code>
+      </li>
+    </ol>
+    <div class="trace-zh">{{ tip.trace.zh }}</div>
   </div>
 </div>
 <script type="module" src="/app.js"></script>

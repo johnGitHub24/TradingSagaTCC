@@ -15,7 +15,7 @@
 | [docs/狀態對照-Saga-TCC-訂單.md](docs/狀態對照-Saga-TCC-訂單.md) | **Saga／預留票／訂單** 三組狀態差異與逐步對照 |
 | [docs/codeGraphic.html](docs/codeGraphic.html) | Tab 式架構圖：**正向／負向／Case→Hotspot**（非權威） |
 | [docs/swagger.html](docs/swagger.html) | API（Swagger UI） |
-| [docs/testing.md](docs/testing.md) | Case／check／DoD／**Runtime Smoke L0～L1**（含 Dashboard DASH-001～003） |
+| [docs/testing.md](docs/testing.md) | Case／check／DoD／**Runtime Smoke L0～L1**（含 Dashboard DASH-001～004） |
 | [docs/graph-routing.md](docs/graph-routing.md) | **最小 Graph**（單 Agent N/A；Release 編排） |
 | [docs/資料庫設計.md](docs/資料庫設計.md) | 雙庫表 |
 | [CLAUDE.md](CLAUDE.md) | AI／工程薄規則（繼承 EOS） |
@@ -44,7 +44,7 @@
 2. **餘額不足** — Saga 補償，餘額不變
 3. **故意失敗** — TCC Cancel，餘額還原
 
-下單後看 **三方狀態機 Dashboard**：Saga 流程／訂單結果／帳戶 TCC 預留票三條「階段一 → 階段二 → 終態分岔」圖像區塊（中文＋代碼），終態後自動慢動作重播；時間軸點一列可定格，點訂單列可回看舊交易。
+下單後看 **三方狀態機 Dashboard**：Saga 流程／訂單結果／帳戶 TCC 預留票三條「階段一 → 階段二 → 終態分岔」圖像區塊（中文＋代碼），終態後自動慢動作重播；時間軸點一列可定格，點訂單列可回看舊交易。滑鼠停在狀態區塊、按鈕或時間軸列上，會浮出 **呼叫鏈**（HTTP／Kafka／排程入口 → Controller／Listener → Service → 方法；對照表 `static/code-trace.json`，可用「顯示呼叫鏈」開關關閉）。
 
 IntelliJ：Gradle `bootRun`（**不要**對 `TradingSagaTccApplication` 綠箭頭）。
 

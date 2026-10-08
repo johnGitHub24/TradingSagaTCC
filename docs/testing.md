@@ -38,6 +38,7 @@
 | OUTBOX-001 | `OutboxPublisherServiceTest`、`SagaOrchestratorTest` | 本次 sagaId 軌跡含 `RESERVE_FUNDS`，並等到 COMPLETED |
 | TCC-001 | `AccountQueryServiceTest` 有票／無票 | `GET /api/v1/tcc/reservations/{sagaId}`：SAGA-001→`CONFIRMED`、SAGA-002→`exists=false`、TCC-002→`CANCELLED`；未知 sagaId→200 `exists=false` |
 | DASH-001 | `static/test/dashboard.spec.js`（11 條；Node `docs/ui-smoke/run-dashboard-unit.mjs`＋瀏覽器 runner 同一份） | `index.html`／`dashboard.js`／`dashboard.spec.js` 200 且含 Dashboard 標記 |
+| DASH-004 | `CodeTraceMapTest`（反射：`code-trace.json` 每個 `類別#方法` 存在、入口方法帶 `@RequestMapping`／`@KafkaListener`／`@Scheduled`）＋`dashboard.spec.js` `traceSpecs`（5 條：前台 trace key ↔ JSON 無缺無多、區塊／時間軸列帶 key、分層一致、`buildTrace` 輸出） | `codeTraceEntries_matchRuntime`：`/code-trace.json` 200；HTTP 入口對上 `RequestMappingHandlerMapping` 實際 method＋path；Kafka topic 以 `Environment` 解析 placeholder 相等；排程 property 存在 |
 
 **UI 層專屬（Runtime Smoke，不進 check）：**
 
@@ -45,6 +46,9 @@
 |------|--------|--------|
 | DASH-002 | 主畫面點 SAGA-001／SAGA-002／TCC-002 按鈕 → 三條 lane 的 `data-state`、每個區塊 `data-status`、中文「目前」標籤、總結色、時間軸列數、available | `/test/runner.html` iframe（headless 同） |
 | DASH-003 | 點訂單列切換交易、時間軸定格第 1 格、回到即時、慢動作重播經過 STARTED→ACCOUNT_TRYING→ACCOUNT_CONFIRMING→COMPLETED、導航列捲動 | 同上 |
+| DASH-004 | hover 狀態區塊（`saga:COMPLETED`、`tcc:TRYING`）／按鈕（`action:place`）／時間軸列（`msg:RESERVE_FUNDS`）→ tooltip 顯示入口＋`Class.method` 鏈；關閉「顯示呼叫鏈」後不出現；另在瀏覽器內重跑 `traceSpecs` | 同上 |
+
+**呼叫鏈對照（DASH-004）防漂移三道：** JS 規格擋「前台 key ↔ JSON」、反射單元擋「類別／方法改名」、整合擋「路由／topic／排程設定改了」。改 Controller／Listener／Service 方法名後若 check 紅，先改 `static/code-trace.json`。
 
 **Dashboard JS 單元：** 純函式不需 bootRun，`node docs/ui-smoke/run-dashboard-unit.mjs` → `ALL_DASH_UNIT_OK`（`run-ui-smoke.ps1` 開瀏覽器前先跑）。Gate 仍不要求 Node。
 
@@ -72,7 +76,7 @@
 **Graph 路由：** `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`）。  
 **流程案例圖／Hotspot：** `docs/codeGraphic.html`（正向／負向／Case→窗口）；原則見 EOS `documentation.md` §流程案例圖。
 
-**L1 劇情（API／UI 共用）：** SAGA-001／002、TCC-002（含預留票終態）、TCC-001、TRADE-001、DASH-001。UI 另跑 DASH-002／003（iframe 實際操作主畫面）。人看：`http://localhost:8093/test/runner.html`。
+**L1 劇情（API／UI 共用）：** SAGA-001／002、TCC-002（含預留票終態）、TCC-001、TRADE-001、DASH-001。UI 另跑 DASH-002／003／004（iframe 實際操作主畫面）。headless runner 遇 `failed` 立即結束並印出失敗劇情 log（不等逾時）。人看：`http://localhost:8093/test/runner.html`。
 
 ### 證據欄範例（`EOS-LOOP-RELEASE`）
 

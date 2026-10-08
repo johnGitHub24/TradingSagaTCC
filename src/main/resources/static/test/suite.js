@@ -1,7 +1,8 @@
 /**
  * TradingSagaTCC L1 UI Smoke — 純 JS（無 Vue CDN），供瀏覽器與 headless 共用。
  * 【職責】API 劇情（SAGA-001／002、TCC-002、TCC-001、TRADE-001）＋ Dashboard：
- * DASH-001 模型規格在瀏覽器再跑一次；DASH-002／003 在 iframe 開主畫面，真的點按鈕、驗三條狀態機區塊與導航。
+ * DASH-001 模型規格在瀏覽器再跑一次；DASH-002／003 在 iframe 開主畫面，真的點按鈕、驗三條狀態機區塊與導航；
+ * DASH-004 驗 hover 呼叫鏈 tooltip（區塊／按鈕／時間軸列）與開關。
  * 【技巧】iframe 同源，可直接讀 contentDocument 的 data-testid／data-status；主畫面加 ?autoReplay=0，
  * 避免終態後自動重播改變畫面、干擾斷言（重播另由 DASH-003 主動觸發驗證）。
  */
@@ -304,6 +305,62 @@ async function runTests() {
             await waitFor(() => Math.abs(q('#dashboard').getBoundingClientRect().top) < 120, 5000, 'nav → Dashboard 置頂',
                 () => 'top=' + q('#dashboard').getBoundingClientRect().top);
             logs.push('導航列捲動 OK');
+        }],
+        ['DASH-004', '呼叫鏈對照規格（瀏覽器內，code-trace.json ↔ dashboard.js）', async (logs) => {
+            const model = await import('/dashboard.js');
+            const { runDashboardSpecs } = await import('/test/dashboard.spec.js');
+            const res = await fetch('/code-trace.json');
+            if (!res.ok) throw new Error('code-trace.json HTTP ' + res.status);
+            const { traces } = await res.json();
+            const results = runDashboardSpecs(model, traces).results.filter((r) => r.id === 'DASH-004');
+            results.filter((r) => !r.pass).forEach((r) => logs.push('FAIL ' + r.name + ' — ' + r.error));
+            const failed = results.filter((r) => !r.pass).length;
+            logs.push(`${results.length - failed} passed, ${failed} failed`);
+            if (failed > 0) throw new Error(failed + ' spec(s) failed');
+        }],
+        ['DASH-004', '主畫面 hover：狀態區塊／按鈕／時間軸列顯示呼叫鏈；關閉開關後不顯示', async (logs) => {
+            if (!saga001Id) throw new Error('需先通過 DASH-002 SAGA-001');
+            const Mouse = uiFrame.contentWindow.MouseEvent;
+            const tip = () => q('[data-testid="trace-tip"]');
+            // 捲動中 tooltip 會自動收起（目標已移位）；DASH-003 的 smooth scroll 可能尚未停，先等 scrollY 連續穩定
+            const scrollIdle = async () => {
+                const w = uiFrame.contentWindow;
+                let last = -1;
+                let stable = 0;
+                await waitFor(() => {
+                    stable = w.scrollY === last ? stable + 1 : 0;
+                    last = w.scrollY;
+                    return stable >= 3;
+                }, 5000, 'scroll idle');
+            };
+            const hoverExpect = async (el, key, mustContain) => {
+                if (!el) throw new Error('找不到 hover 目標 ' + key);
+                await scrollIdle();
+                el.dispatchEvent(new Mouse('mouseover', { bubbles: true }));
+                await waitFor(() => tip()?.dataset.traceKey === key
+                    && mustContain.every((s) => tip().textContent.includes(s)), 3000, 'tooltip ' + key,
+                () => 'tip=' + (tip()?.textContent || '(none)').replace(/\s+/g, ' ').slice(0, 160));
+                el.dispatchEvent(new Mouse('mouseout', { bubbles: true }));
+                await waitFor(() => !tip(), 3000, 'tooltip ' + key + ' hidden');
+                logs.push(key + ' → ' + mustContain.join(' > '));
+            };
+
+            await hoverExpect(lane('saga').querySelector('[data-trace="saga:COMPLETED"]'), 'saga:COMPLETED',
+                ['Kafka', 'SagaKafkaListeners.onEvent', 'OrderSagaEventHandler.onConfirmed']);
+            await hoverExpect(lane('tcc').querySelector('[data-trace="tcc:TRYING"]'), 'tcc:TRYING',
+                ['SagaKafkaListeners.onCommand', 'AccountTccService.tryReserve']);
+            await hoverExpect(q('[data-testid="btn-saga-001"]'), 'action:place',
+                ['POST /api/v1/trades', 'TradeController.place', 'SagaOrchestrator.start']);
+            await hoverExpect(q('[data-testid="timeline-row"][data-trace="msg:RESERVE_FUNDS"]'), 'msg:RESERVE_FUNDS',
+                ['排程', 'OutboxRelayJob.tick', 'KafkaTemplateMessageSender.send']);
+
+            const toggle = q('[data-testid="toggle-trace"]');
+            toggle.click();
+            q('[data-testid="btn-reset"]').dispatchEvent(new Mouse('mouseover', { bubbles: true }));
+            await wait(300);
+            if (tip()) throw new Error('關閉「顯示呼叫鏈」後仍出現 tooltip');
+            toggle.click();
+            logs.push('開關關閉時不顯示 OK');
         }]
     ];
 

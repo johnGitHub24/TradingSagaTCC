@@ -1,5 +1,5 @@
 /**
- * DASH-001 單元層：dashboard.js 狀態推導純函式的規格（無 DOM、無 HTTP）。
+ * DASH-001／DASH-004 單元層：dashboard.js 狀態推導與呼叫鏈對照的規格（無 DOM、無 HTTP）。
  * 【技巧】本檔不 import 任何東西，由呼叫端傳入 model 模組：
  * 瀏覽器（test/suite.js）傳 import('/dashboard.js')；Node（docs/ui-smoke/run-dashboard-unit.mjs）以 data URL 載入後傳入，
  * 同一份規格兩邊跑，不必為 Node 改寫成 CommonJS。
@@ -198,18 +198,128 @@ export function dashboardSpecs(m) {
     ];
 }
 
+/** 代表性快照：涵蓋三情境終態、進行中、補償中與預留值 FAILED，用來掃過所有會畫出來的區塊。 */
+const SCENARIO_SNAPS = (m) => [
+    m.liveSnapshot(null, null, null),
+    m.liveSnapshot(saga('ACCOUNT_TRYING', SAGA_001_STEPS.slice(0, 2)), { status: 'PENDING' }, ticket(null)),
+    m.liveSnapshot(saga('ACCOUNT_CONFIRMING', SAGA_001_STEPS.slice(0, 3)), { status: 'PENDING' }, ticket('TRYING')),
+    m.liveSnapshot(saga('COMPLETED', SAGA_001_STEPS), { status: 'FILLED' }, ticket('CONFIRMED')),
+    m.liveSnapshot(saga('COMPENSATED', SAGA_001_STEPS.slice(0, 2)), { status: 'FAILED' }, ticket(null)),
+    m.liveSnapshot(saga('COMPENSATED', SAGA_001_STEPS.slice(0, 3)), { status: 'FAILED' }, ticket('CANCELLED')),
+    m.liveSnapshot(saga('COMPENSATING', SAGA_001_STEPS.slice(0, 2)), { status: 'PENDING' }, ticket(null)),
+    m.liveSnapshot(saga('FAILED', SAGA_001_STEPS.slice(0, 2)), { status: 'FAILED' }, ticket(null))
+];
+
+const REF_PATTERN = /^com\.trading\.saga\.[\w.]+\.[A-Z]\w*#\w+$/;
+const FIRST_LAYER = { HTTP: 'Controller', KAFKA: 'Listener', SCHEDULED: 'Scheduler' };
+
+/**
+ * 【職責】DASH-004 規格：code-trace.json 與前台 trace key 對得上、格式正確、buildTrace 輸出正確。
+ * 【概念】這裡只管「前台 ↔ 對照表」；「對照表 ↔ Java 程式碼」由 CodeTraceMapTest（反射）與
+ * TradeSagaIntegrationTest（HandlerMapping／@KafkaListener／@Scheduled）把關，三段合起來才不會漂移。
+ * @param {object} m dashboard.js 模組
+ * @param {object} traces code-trace.json 的 traces 物件
+ * @returns {Array<{id:string, name:string, fn:Function}>}
+ */
+export function traceSpecs(m, traces) {
+    return [
+        {
+            name: 'code-trace.json 涵蓋前台全部 trace key，且沒有多餘的 key',
+            fn: () => {
+                const expected = m.expectedTraceKeys();
+                const missing = expected.filter((k) => !traces[k]);
+                const extra = Object.keys(traces).filter((k) => !expected.includes(k));
+                eq(missing.join(','), '', '缺少 trace');
+                eq(extra.join(','), '', '多餘 trace（前台不會用到）');
+            }
+        },
+        {
+            name: '每個情境畫出的狀態區塊都帶 trace key，且與 lane／代碼一致',
+            fn: () => {
+                for (const snap of SCENARIO_SNAPS(m)) {
+                    for (const lane of m.buildLanes(snap)) {
+                        for (const block of [...lane.stages, ...lane.fork]) {
+                            ok(block.trace && traces[block.trace], `${lane.key} ${block.code} 缺 trace（${block.trace}）`);
+                            ok(block.trace.startsWith(lane.key + ':'), `${block.trace} 不屬於 ${lane.key} lane`);
+                            if (lane.key !== 'tcc') eq(block.trace, lane.key + ':' + block.code, 'trace 應對應區塊代碼');
+                        }
+                    }
+                }
+                const tryFailed = laneOf(m.buildLanes(SCENARIO_SNAPS(m)[4]), 'tcc');
+                eq(tryFailed.stages[1].trace, 'tcc:TRY_FAILED', 'Try 失敗分岔改指 TRY_FAILED');
+            }
+        },
+        {
+            name: '時間軸列：步驟→step:、訊息→msg:、即時格不顯示呼叫鏈',
+            fn: () => {
+                const s = saga('COMPLETED', SAGA_001_STEPS);
+                const frames = m.buildTimeline(s, SAGA_001_EVENTS, m.liveSnapshot(s, { status: 'FILLED' }, ticket('CONFIRMED')));
+                for (const f of frames) {
+                    const prefix = f.side === 'order' ? 'step:' : 'msg:';
+                    eq(f.trace, prefix + f.name, f.name + ' trace');
+                    ok(traces[f.trace], f.trace + ' 不在 code-trace.json');
+                }
+                const live = m.buildTimeline(s, [], m.liveSnapshot(s, { status: 'FILLED' }, ticket('CONFIRMED')));
+                eq(live[live.length - 1].trace, null, '即時格 trace');
+            }
+        },
+        {
+            name: '每筆 trace 格式：ref 為 完整類別名#方法；入口種類與第一格分層一致',
+            fn: () => {
+                for (const [key, t] of Object.entries(traces)) {
+                    const kind = t.entry?.kind;
+                    ok(['HTTP', 'KAFKA', 'SCHEDULED', 'NONE'].includes(kind), key + ' entry.kind=' + kind);
+                    ok(typeof t.zh === 'string' && t.zh.length > 0, key + ' 缺中文說明');
+                    if (kind === 'NONE') {
+                        eq(t.chain.length, 0, key + ' NONE 不應有呼叫鏈');
+                        continue;
+                    }
+                    ok(t.chain.length >= 2, key + ' 呼叫鏈至少兩格（入口＋處理）');
+                    t.chain.forEach((r) => ok(REF_PATTERN.test(r), key + ' ref 格式錯：' + r));
+                    if (kind === 'HTTP') ok(t.entry.method && t.entry.path.startsWith('/api/v1/'), key + ' HTTP 入口缺 method／path');
+                    if (kind === 'KAFKA') ok(t.entry.topic && t.entry.property, key + ' Kafka 入口缺 topic／property');
+                    eq(m.formatRef(t.chain[0]).layer, FIRST_LAYER[kind], key + ' 第一格分層');
+                }
+            }
+        },
+        {
+            name: 'buildTrace：入口徽章、Class.method、分層；查無 key 回 null',
+            fn: () => {
+                const done = m.buildTrace(traces, 'saga:COMPLETED');
+                eq(done.kind, 'KAFKA', 'Kafka 入口');
+                eq(done.entry, 'topic trading.saga.events', 'topic');
+                eq(done.steps[0].label, 'SagaKafkaListeners.onEvent', '第一格');
+                eq(done.steps.map((s) => s.layer).join('>'), 'Listener>Handler>Handler>Domain', '分層');
+                const place = m.buildTrace(traces, 'action:place');
+                eq(place.entry, 'POST /api/v1/trades', 'HTTP 入口');
+                eq(place.steps.map((s) => s.label).join(' > '),
+                    'TradeController.place > SagaOrchestrator.start > OutboxPublisherService.append', '下單呼叫鏈');
+                eq(m.buildTrace(traces, 'msg:RESERVE_FUNDS').kindZh, '排程', '發件匣由排程送出');
+                eq(m.buildTrace(traces, 'saga:FAILED').steps.length, 0, '預留值無呼叫鏈');
+                eq(m.buildTrace(traces, 'nope'), null, '查無 key');
+                eq(m.buildTrace(null, 'saga:COMPLETED'), null, '對照表未載入');
+            }
+        }
+    ].map((s) => ({ id: 'DASH-004', ...s }));
+}
+
 /**
  * 【職責】執行全部規格並收集結果（不丟例外，方便兩種執行環境各自輸出）。
  * @param {object} m dashboard.js 模組
- * @returns {{passed:number, failed:number, results:Array<{name:string, pass:boolean, error?:string}>}}
+ * @param {object} [traces] code-trace.json 的 traces；有給才跑 DASH-004
+ * @returns {{passed:number, failed:number, results:Array<{id:string, name:string, pass:boolean, error?:string}>}}
  */
-export function runDashboardSpecs(m) {
-    const results = dashboardSpecs(m).map(({ name, fn }) => {
+export function runDashboardSpecs(m, traces) {
+    const specs = [
+        ...dashboardSpecs(m).map((s) => ({ id: 'DASH-001', ...s })),
+        ...(traces ? traceSpecs(m, traces) : [])
+    ];
+    const results = specs.map(({ id, name, fn }) => {
         try {
             fn();
-            return { name, pass: true };
+            return { id, name, pass: true };
         } catch (e) {
-            return { name, pass: false, error: String(e.message || e) };
+            return { id, name, pass: false, error: String(e.message || e) };
         }
     });
     const failed = results.filter((r) => !r.pass).length;

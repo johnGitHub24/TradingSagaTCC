@@ -14,6 +14,11 @@ spring:
   jackson:
     serialization:
       write-dates-as-timestamps: false  # Instant 輸出 ISO-8601 字串，前台可直接顯示
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          no-cache: true  # 靜態檔每次向伺服器確認（未改回 304）；否則瀏覽器沿用舊版 app.js／dashboard.js ES module
   # 只放序列化設定，不設 bootstrap-servers：內嵌模式由 EmbeddedKafkaConfig 於執行期注入 broker 位址
   kafka:
     producer:

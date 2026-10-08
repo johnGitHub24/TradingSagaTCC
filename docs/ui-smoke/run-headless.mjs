@@ -34,13 +34,22 @@ try {
     const btn = await page.waitForSelector('[data-testid="run-l1-smoke"]', { timeout: 10000 });
     await btn.click();
 
+    // 'failed' 也是終態：不等到逾時，直接印出失敗劇情的 log
     await page.waitForFunction(
         () => {
             const el = document.querySelector('[data-testid="smoke-status"]');
-            return el && el.dataset.value === 'completed';
+            return el && (el.dataset.value === 'completed' || el.dataset.value === 'failed');
         },
         { timeout: timeoutMs }
     );
+
+    const failedCases = await page.$$eval('#results .card', (cards) => cards
+        .filter((c) => c.querySelector('.fail'))
+        .map((c) => c.querySelector('strong').textContent.trim() + ' ' + c.querySelector('.muted').textContent.trim()
+            + '\n  ' + (c.querySelector('pre')?.textContent || '').replace(/\n/g, '\n  ')));
+    if (failedCases.length > 0) {
+        throw new Error(failedCases.length + ' 個劇情 FAIL\n' + failedCases.join('\n'));
+    }
 
     const label = await page.$eval('.btn-run', (el) => el.textContent.trim());
     if (!label.includes('SERVICE COMPLETED')) {

@@ -5,7 +5,8 @@
  * 【概念】三組狀態分屬兩庫：Saga／訂單在 orderdb，預留票在 accountdb；兩庫只靠 Kafka 傳話，
  * 所以「預留票先變、Saga 後跟」（最終一致）。權威定義：SagaStatus／OrderStatus／TccState 三個 enum
  * 與 docs/狀態對照-Saga-TCC-訂單.md；本檔若與其衝突，以 enum 為準。
- * 【使用】app.js：liveSnapshot → buildLanes／buildVerdict；buildTimeline 供時間軸與慢動作重播。
+ * 【使用】app.js：liveSnapshot → buildLanes／buildVerdict；buildTimeline 供時間軸與慢動作重播；
+ * buildTrace 把 code-trace.json 轉成 hover 呼叫鏈（區塊／時間軸列都帶 trace key）。
  */
 
 const NUM_ZH = ['一', '二', '三', '四', '五', '六'];
@@ -129,12 +130,12 @@ const toneOf = (code) => {
  */
 function buildSagaLane(snap) {
     const defs = [
-        { code: 'STARTED', zh: SAGA_ZH.STARTED, icon: 'bi-flag', desc: '建立 Saga 實例' },
-        { code: 'ACCOUNT_TRYING', zh: SAGA_ZH.ACCOUNT_TRYING, icon: 'bi-snow', desc: '已登記 RESERVE_FUNDS，等帳戶 Try' },
-        { code: 'ACCOUNT_CONFIRMING', zh: SAGA_ZH.ACCOUNT_CONFIRMING, icon: 'bi-hourglass-split', desc: '已凍結，登記 CONFIRM_FUNDS 等扣款' }
+        { code: 'STARTED', trace: 'saga:STARTED', zh: SAGA_ZH.STARTED, icon: 'bi-flag', desc: '建立 Saga 實例' },
+        { code: 'ACCOUNT_TRYING', trace: 'saga:ACCOUNT_TRYING', zh: SAGA_ZH.ACCOUNT_TRYING, icon: 'bi-snow', desc: '已登記 RESERVE_FUNDS，等帳戶 Try' },
+        { code: 'ACCOUNT_CONFIRMING', trace: 'saga:ACCOUNT_CONFIRMING', zh: SAGA_ZH.ACCOUNT_CONFIRMING, icon: 'bi-hourglass-split', desc: '已凍結，登記 CONFIRM_FUNDS 等扣款' }
     ];
-    const ok = { code: 'COMPLETED', zh: SAGA_ZH.COMPLETED, icon: 'bi-check2-circle', desc: '收到 FUNDS_CONFIRMED' };
-    const ng = { code: 'COMPENSATED', zh: SAGA_ZH.COMPENSATED, icon: 'bi-arrow-counterclockwise', desc: '經 COMPENSATING 收尾' };
+    const ok = { code: 'COMPLETED', trace: 'saga:COMPLETED', zh: SAGA_ZH.COMPLETED, icon: 'bi-check2-circle', desc: '收到 FUNDS_CONFIRMED' };
+    const ng = { code: 'COMPENSATED', trace: 'saga:COMPENSATED', zh: SAGA_ZH.COMPENSATED, icon: 'bi-arrow-counterclockwise', desc: '經 COMPENSATING 收尾' };
     const s = snap.sagaStatus;
     const forkIdx = defs.length;
     let stages;
@@ -157,9 +158,9 @@ function buildSagaLane(snap) {
         let ngOverride = {};
         if (s === 'COMPENSATING') {
             ngStatus = 'warnActive';
-            ngOverride = { code: 'COMPENSATING', zh: SAGA_ZH.COMPENSATING, desc: '補償動作執行中' };
+            ngOverride = { code: 'COMPENSATING', trace: 'saga:COMPENSATING', zh: SAGA_ZH.COMPENSATING, desc: '補償動作執行中' };
         } else if (s === 'FAILED') {
-            ngOverride = { code: 'FAILED', zh: SAGA_ZH.FAILED, desc: '補償本身失敗（預留狀態）' };
+            ngOverride = { code: 'FAILED', trace: 'saga:FAILED', zh: SAGA_ZH.FAILED, desc: '補償本身失敗（預留狀態）' };
         }
         fork = [end(ok, forkIdx, 'ok', 'dim'), end(ng, forkIdx, 'ng', ngStatus, ngOverride)];
     }
@@ -181,10 +182,10 @@ function buildSagaLane(snap) {
  */
 function buildOrderLane(snap) {
     const defs = [
-        { code: 'PENDING', zh: ORDER_ZH.PENDING, icon: 'bi-receipt', desc: 'Saga 未終態前都停在這' }
+        { code: 'PENDING', trace: 'order:PENDING', zh: ORDER_ZH.PENDING, icon: 'bi-receipt', desc: 'Saga 未終態前都停在這' }
     ];
-    const ok = { code: 'FILLED', zh: ORDER_ZH.FILLED, icon: 'bi-bag-check', desc: '收到 FUNDS_CONFIRMED' };
-    const ng = { code: 'FAILED', zh: '已失敗', icon: 'bi-bag-x', desc: '補償時標記；非系統錯誤' };
+    const ok = { code: 'FILLED', trace: 'order:FILLED', zh: ORDER_ZH.FILLED, icon: 'bi-bag-check', desc: '收到 FUNDS_CONFIRMED' };
+    const ng = { code: 'FAILED', trace: 'order:FAILED', zh: '已失敗', icon: 'bi-bag-x', desc: '補償時標記；非系統錯誤' };
     const s = snap.orderStatus;
     const forkIdx = defs.length;
     let stages;
@@ -222,11 +223,11 @@ function buildOrderLane(snap) {
  */
 function buildTccLane(snap) {
     const defs = [
-        { code: '（無票）', zh: TCC_ZH.NONE, icon: 'bi-inbox', desc: '等待 RESERVE_FUNDS 命令' },
-        { code: 'TRYING', zh: TCC_ZH.TRYING, icon: 'bi-lock', desc: 'available → frozen，寫入預留票' }
+        { code: '（無票）', trace: 'tcc:NONE', zh: TCC_ZH.NONE, icon: 'bi-inbox', desc: '等待 RESERVE_FUNDS 命令' },
+        { code: 'TRYING', trace: 'tcc:TRYING', zh: TCC_ZH.TRYING, icon: 'bi-lock', desc: 'available → frozen，寫入預留票' }
     ];
-    const ok = { code: 'CONFIRMED', zh: TCC_ZH.CONFIRMED, icon: 'bi-cash-coin', desc: 'frozen 扣掉，total 下降' };
-    const ng = { code: 'CANCELLED', zh: TCC_ZH.CANCELLED, icon: 'bi-unlock', desc: 'frozen 退回 available' };
+    const ok = { code: 'CONFIRMED', trace: 'tcc:CONFIRMED', zh: TCC_ZH.CONFIRMED, icon: 'bi-cash-coin', desc: 'frozen 扣掉，total 下降' };
+    const ng = { code: 'CANCELLED', trace: 'tcc:CANCELLED', zh: TCC_ZH.CANCELLED, icon: 'bi-unlock', desc: 'frozen 退回 available' };
     const s = snap.tcc;
     const forkIdx = defs.length;
     let stages;
@@ -250,7 +251,7 @@ function buildTccLane(snap) {
     } else {
         stages = [
             stage(defs[0], 0, 'done'),
-            stage(defs[1], 1, 'branch', { code: '（無票）', zh: TCC_ZH.TRY_FAILED, icon: 'bi-x-octagon', desc: '餘額不足，不寫預留票' })
+            stage(defs[1], 1, 'branch', { code: '（無票）', trace: 'tcc:TRY_FAILED', zh: TCC_ZH.TRY_FAILED, icon: 'bi-x-octagon', desc: '餘額不足，不寫預留票' })
         ];
         fork = [end(ok, forkIdx, 'ok', 'skip'), end(ng, forkIdx, 'ng', 'skip')];
     }
@@ -361,7 +362,10 @@ export function buildTimeline(saga, events, live) {
     if (!saga) return [];
     const entries = [];
     for (const st of saga.steps || []) {
-        entries.push({ at: Date.parse(st.at), side: 'order', sideZh: '訂單側', name: st.name, label: STEP_ZH[st.name] ?? st.name });
+        entries.push({
+            at: Date.parse(st.at), side: 'order', sideZh: '訂單側', name: st.name,
+            label: STEP_ZH[st.name] ?? st.name, trace: 'step:' + st.name
+        });
     }
     for (const e of events || []) {
         if (e.sagaId !== saga.sagaId) continue;
@@ -371,7 +375,8 @@ export function buildTimeline(saga, events, live) {
             side: isCommand ? 'kafka' : 'account',
             sideZh: isCommand ? 'Kafka 命令' : '帳戶側 TCC',
             name: e.type,
-            label: MSG_ZH[e.type] ?? e.type
+            label: MSG_ZH[e.type] ?? e.type,
+            trace: 'msg:' + e.type
         });
     }
     entries.sort((a, b) => a.at - b.at);
@@ -385,9 +390,81 @@ export function buildTimeline(saga, events, live) {
     if (live.sagaStatus && (!frames.length || !sameSnap(frames[frames.length - 1].snap, live))) {
         const last = frames.length ? frames[frames.length - 1].at : t0;
         frames.push({
-            at: last, offsetMs: last - t0, side: 'live', sideZh: '即時', name: 'LIVE',
+            at: last, offsetMs: last - t0, side: 'live', sideZh: '即時', name: 'LIVE', trace: null,
             label: '目前即時狀態（API 查詢結果）', snap: { ...live }, summary: summarize(live)
         });
     }
     return frames;
+}
+
+/** 前台按鈕對應的 trace key（data-trace 屬性值）；情境按鈕都打同一支下單 API。 */
+export const ACTION_TRACE_KEYS = ['action:place', 'action:reset'];
+
+/**
+ * 【職責】列出前台會用到的全部 trace key（區塊＋時間軸列＋按鈕），供 DASH-004 規格比對 code-trace.json 沒漏、沒多。
+ * 【技巧】由本檔的中文對照表推導，新增狀態或步驟時忘了補 code-trace.json，規格立刻紅。
+ * @returns {string[]}
+ */
+export function expectedTraceKeys() {
+    return [
+        ...Object.keys(SAGA_ZH).map((k) => 'saga:' + k),
+        ...Object.keys(ORDER_ZH).map((k) => 'order:' + k),
+        ...Object.keys(TCC_ZH).map((k) => 'tcc:' + k),
+        ...Object.keys(STEP_ZH).map((k) => 'step:' + k),
+        ...Object.keys(MSG_ZH).map((k) => 'msg:' + k),
+        ...ACTION_TRACE_KEYS
+    ];
+}
+
+/**
+ * 【職責】由類別簡名推導分層標籤（Controller／Listener／Handler／Service／Scheduler／Infra／Domain）。
+ * 【概念】只是顯示用的命名慣例推導；權威仍是 code-trace.json 的完整類別名。
+ * @param {string} simpleName 例如 TradeController
+ */
+export function layerOf(simpleName) {
+    if (simpleName.endsWith('Controller')) return 'Controller';
+    if (simpleName.endsWith('Listeners') || simpleName.endsWith('Listener')) return 'Listener';
+    if (simpleName.endsWith('Handler')) return 'Handler';
+    if (simpleName.endsWith('Job')) return 'Scheduler';
+    if (/(Service|Orchestrator|Action)$/.test(simpleName)) return 'Service';
+    if (simpleName.endsWith('Sender')) return 'Infra';
+    return 'Domain';
+}
+
+/**
+ * 【職責】把 'com.x.TradeController#place' 轉成畫面用的 { label:'TradeController.place', layer, ref }。
+ * @param {string} ref 完整類別名#方法名
+ */
+export function formatRef(ref) {
+    const [fqcn, method] = ref.split('#');
+    const simple = fqcn.slice(fqcn.lastIndexOf('.') + 1);
+    return { ref, label: simple + '.' + method, layer: layerOf(simple) };
+}
+
+/** 入口種類的中文徽章字樣。 */
+const ENTRY_ZH = { HTTP: 'HTTP', KAFKA: 'Kafka', SCHEDULED: '排程', NONE: '無程式路徑' };
+
+/**
+ * 【職責】查 code-trace.json 組出 tooltip 模型：入口徽章＋呼叫鏈（每格帶分層）＋中文說明。
+ * 【使用】app.js hover／點擊區塊、按鈕、時間軸列時呼叫；查不到回 null（不顯示 tooltip）。
+ * @param {object|null} traces code-trace.json 的 traces 物件
+ * @param {string|null} key 例如 'saga:COMPLETED'
+ * @returns {{key:string, kind:string, kindZh:string, entry:string, zh:string, steps:Array}|null}
+ */
+export function buildTrace(traces, key) {
+    const t = key && traces ? traces[key] : null;
+    if (!t) return null;
+    const e = t.entry || { kind: 'NONE' };
+    let entry = '目前沒有程式路徑會產生此狀態';
+    if (e.kind === 'HTTP') entry = e.method + ' ' + e.path;
+    else if (e.kind === 'KAFKA') entry = 'topic ' + e.topic;
+    else if (e.kind === 'SCHEDULED') entry = '@Scheduled（${' + e.every + '}）';
+    return {
+        key,
+        kind: e.kind,
+        kindZh: ENTRY_ZH[e.kind] ?? e.kind,
+        entry,
+        zh: t.zh ?? '',
+        steps: (t.chain || []).map(formatRef)
+    };
 }

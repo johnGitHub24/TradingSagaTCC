@@ -92,9 +92,12 @@ HTTP：請求合法即 **202**（Saga 已建）；終態靠輪詢 `GET /api/v1/s
 | OUTBOX-001 | append 後 unpublished | 下單後 command topic 有訊息 | Outbox→Kafka |
 | TCC-001 | 有票投影 state；無票回 exists=false | 三情境終態 CONFIRMED／無票／CANCELLED；未知 sagaId 200 | 預留票查詢 |
 | DASH-001 | `dashboard.js` 狀態推導 11 條規格（Node＋瀏覽器） | 靜態 Dashboard 資源 200 含標記 | 圖像化狀態機 |
+| DASH-004 | `code-trace.json` 反射驗類別#方法＋入口註解；JS 驗 trace key 無缺無多 | 入口對上實際路由／Kafka topic／排程設定 | hover 顯示呼叫鏈 |
 
 TCC 成功 Confirm 由 **SAGA-001** 覆蓋（不另開重複 HTTP Case）。  
-UI 層專屬（Runtime Smoke，不進 check）：**DASH-002** 主畫面三情境區塊狀態、**DASH-003** 導航／定格／慢動作重播。
+UI 層專屬（Runtime Smoke，不進 check）：**DASH-002** 主畫面三情境區塊狀態、**DASH-003** 導航／定格／慢動作重播、**DASH-004** hover tooltip＋開關。
+
+**呼叫鏈 tooltip（DASH-004）：** 滑鼠停在狀態區塊、下單／還原按鈕、時間軸列上，顯示「入口（HTTP／Kafka／排程）→ Controller／Listener → Handler／Service → 方法」。對照表唯一來源 `static/code-trace.json`；「Saga FAILED」「CANCEL_FUNDS」目前無程式路徑，tooltip 明示。頁面捲動即收起；可用「顯示呼叫鏈」開關關閉。
 
 ## 8. 驗證
 

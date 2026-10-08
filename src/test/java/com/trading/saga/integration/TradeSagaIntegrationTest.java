@@ -1,21 +1,34 @@
 package com.trading.saga.integration;
 
+import com.trading.saga.support.CodeTraceFixtures;
+import com.trading.saga.support.CodeTraceFixtures.CodeTrace;
 import com.trading.saga.support.SagaTestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.time.Duration;
+import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
@@ -41,6 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>OUTBOX-001：下單後 Kafka 軌跡出現 {@code RESERVE_FUNDS}。</li>
  *   <li>TCC-001：{@code GET /api/v1/tcc/reservations/{sagaId}} → 三情境終態預留票 CONFIRMED／無票／CANCELLED；未知 sagaId → 200 exists=false。</li>
  *   <li>DASH-001：同埠靜態前台 index.html／dashboard.js／dashboard.spec.js → 200 且含 Dashboard 標記。</li>
+ *   <li>DASH-004：呼叫鏈對照表 code-trace.json 的 HTTP／Kafka／排程入口與執行期映射一致。</li>
  * </ul>
  * <p>【技巧】Request body 來自 {@code docs/test-data/}（EOS Fixture）；Awaitility 等終態。
  * <ul>
@@ -89,6 +103,15 @@ class TradeSagaIntegrationTest {
     // 模擬 HTTP 呼叫的入口：perform(請求) → andExpect(期望)；由 @AutoConfigureMockMvc 提供
     @Autowired
     private MockMvc mockMvc;
+
+    // DASH-004：Spring MVC 的「路徑 → Controller 方法」對照表；指名注入，避開 Actuator 等其他同型別 Bean
+    @Autowired
+    @Qualifier("requestMappingHandlerMapping")
+    private RequestMappingHandlerMapping handlerMapping;
+
+    // DASH-004：解析 ${trading.kafka.*} 等設定的實際值
+    @Autowired
+    private Environment environment;
 
     /**
      * 【職責】每個 Test 前把種子帳戶 ACC-001 還原成 available=100000、frozen=0。
@@ -297,6 +320,8 @@ class TradeSagaIntegrationTest {
         // dashboard.js：三條 lane 的推導與時間軸重建都由它輸出
         mockMvc.perform(get("/dashboard.js"))
                 .andExpect(status().isOk())
+                // 改版後瀏覽器不得沿用舊 ES module（spring.web.resources.cache.cachecontrol.no-cache）
+                .andExpect(header().string("Cache-Control", containsString("no-cache")))
                 .andExpect(content().string(allOf(
                         containsString("export function buildLanes"),
                         containsString("export function buildTimeline"),
@@ -306,6 +331,52 @@ class TradeSagaIntegrationTest {
         mockMvc.perform(get("/test/dashboard.spec.js"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("export function runDashboardSpecs")));
+    }
+
+    /**
+     * DASH-004：Given 前台呼叫鏈對照表 code-trace.json，When 對照執行中的 Spring 應用，
+     * <br>Then HTTP 入口真的映射到該 Controller 方法＋HTTP 方法＋路徑、Kafka 入口的 topic 解析後與 JSON 相同、
+     * <br>排程入口的間隔屬性存在。類別／方法存在性由單元層 CodeTraceMapTest 反射把關。
+     */
+    @Test
+    @DisplayName("DASH-004: code-trace entries match runtime mappings, Kafka topics and schedule")
+    void codeTraceEntries_matchRuntime() throws Exception {
+        // 前台以同埠 fetch('/code-trace.json') 載入；只比對 ASCII 欄位（理由同 DASH-001）
+        mockMvc.perform(get("/code-trace.json"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.traces['action:place'].entry.path").value("/api/v1/trades"));
+
+        Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
+        for (CodeTrace t : CodeTraceFixtures.load()) {
+            switch (t.kind()) {
+                case "HTTP" -> {
+                    String cls = CodeTraceFixtures.classOf(t.entryRef()).getName();
+                    String name = CodeTraceFixtures.methodNameOf(t.entryRef());
+                    // HandlerMethod.getBeanType() 已去掉 CGLIB 代理，可直接比類別名
+                    boolean mapped = mappings.entrySet().stream().anyMatch(e ->
+                            e.getValue().getBeanType().getName().equals(cls)
+                                    && e.getValue().getMethod().getName().equals(name)
+                                    && e.getKey().getMethodsCondition().getMethods().contains(RequestMethod.valueOf(t.method()))
+                                    && e.getKey().getPatternValues().contains(t.path()));
+                    assertThat(mapped).as(t.key() + "：" + t.method() + " " + t.path() + " 應映射到 " + t.entryRef()).isTrue();
+                }
+                case "KAFKA" -> {
+                    KafkaListener listener = AnnotatedElementUtils.findMergedAnnotation(
+                            CodeTraceFixtures.findMethod(t.entryRef()).orElseThrow(), KafkaListener.class);
+                    assertThat(listener).as(t.entryRef() + " @KafkaListener").isNotNull();
+                    assertThat(listener.topics()).as(t.key() + " topic 屬性").contains("${" + t.property() + "}");
+                    assertThat(environment.getProperty(t.property())).as(t.key() + " topic 實際名稱").isEqualTo(t.topic());
+                }
+                case "SCHEDULED" -> {
+                    Scheduled scheduled = AnnotatedElementUtils.findMergedAnnotation(
+                            CodeTraceFixtures.findMethod(t.entryRef()).orElseThrow(), Scheduled.class);
+                    assertThat(scheduled).as(t.entryRef() + " @Scheduled").isNotNull();
+                    assertThat(scheduled.fixedDelayString()).as(t.key() + " 間隔屬性").contains("${" + t.property());
+                    assertThat(environment.containsProperty(t.property())).as(t.property() + " 存在").isTrue();
+                }
+                default -> assertThat(t.chain()).as(t.key() + " NONE 無呼叫鏈").isEmpty();
+            }
+        }
     }
 
     /** TCC-001：Given 從未下單的 sagaId，When GET /api/v1/tcc/reservations/{sagaId}，Then 200 且 exists=false（無票是合法狀態，不是 404）。 */

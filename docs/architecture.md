@@ -30,6 +30,7 @@ outbox_events
 |------|-------|----------------|
 | Entry UI | `app.js` | `place`／`pollSaga`／`reportOutcome`／`startReplay`／`inspectOrder` |
 | Dashboard 模型 | `dashboard.js`（純函式） | `liveSnapshot`／`buildLanes`／`buildVerdict`／`buildTimeline` |
+| 呼叫鏈對照 | `static/code-trace.json`＋`dashboard.js` | `buildTrace`／`formatRef`／`layerOf`（hover 顯示本表的「Class → function」；`CodeTraceMapTest` 反射防漂移） |
 | 預留票查詢 | `TccReservationController` | `get` → `AccountQueryService.getReservation`（唯讀帳戶庫） |
 | HTTP | `TradeController` | `place` |
 | 編排起點 | `SagaOrchestrator` | `start` |

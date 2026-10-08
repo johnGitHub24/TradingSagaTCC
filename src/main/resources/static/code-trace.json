@@ -1,0 +1,272 @@
+{
+  "_doc": "DASH-004 呼叫鏈對照表：前台狀態區塊／按鈕／時間軸列 hover 時顯示「入口 → Controller／Listener → Service → 方法」。chain 每格為 '完整類別名#方法名'，CodeTraceMapTest（反射）與 TradeSagaIntegrationTest（HandlerMapping／@KafkaListener／@Scheduled）保證不與程式碼漂移。entry.kind：HTTP｜KAFKA｜SCHEDULED｜NONE（目前沒有程式路徑會產生，例如預留值／擴增點）。",
+  "traces": {
+    "saga:STARTED": {
+      "entry": { "kind": "HTTP", "method": "POST", "path": "/api/v1/trades" },
+      "zh": "下單 API 在 orderdb 同一個 Local TX 建立訂單與 Saga 實例",
+      "chain": [
+        "com.trading.saga.order.TradeController#place",
+        "com.trading.saga.saga.SagaOrchestrator#start",
+        "com.trading.saga.order.domain.SagaInstance#start"
+      ]
+    },
+    "saga:ACCOUNT_TRYING": {
+      "entry": { "kind": "HTTP", "method": "POST", "path": "/api/v1/trades" },
+      "zh": "同一 TX 立刻轉「凍結資金中」，並把 RESERVE_FUNDS 寫進發件匣（OutboxPublisherService.append）",
+      "chain": [
+        "com.trading.saga.order.TradeController#place",
+        "com.trading.saga.saga.SagaOrchestrator#start",
+        "com.trading.saga.order.domain.SagaInstance#transitionTo"
+      ]
+    },
+    "saga:ACCOUNT_CONFIRMING": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.events", "property": "trading.kafka.event-topic" },
+      "zh": "收到 FUNDS_RESERVED → 轉「確認扣款中」，發件匣登記 CONFIRM_FUNDS",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onEvent",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onMessage",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onReserved",
+        "com.trading.saga.order.domain.SagaInstance#transitionTo"
+      ]
+    },
+    "saga:COMPLETED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.events", "property": "trading.kafka.event-topic" },
+      "zh": "收到 FUNDS_CONFIRMED → 訂單成交＋Saga 完成（同一 TX）",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onEvent",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onMessage",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onConfirmed",
+        "com.trading.saga.order.domain.SagaInstance#transitionTo"
+      ]
+    },
+    "saga:COMPENSATING": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.events", "property": "trading.kafka.event-topic" },
+      "zh": "收到 FUNDS_FAILED／FUNDS_CANCELLED → 補償動作開始（同一 TX 內緊接 COMPENSATED）",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onEvent",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onMessage",
+        "com.trading.saga.saga.OrderMarkFailedAction#compensate",
+        "com.trading.saga.order.domain.SagaInstance#transitionTo"
+      ]
+    },
+    "saga:COMPENSATED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.events", "property": "trading.kafka.event-topic" },
+      "zh": "收到 FUNDS_FAILED／FUNDS_CANCELLED → 經 COMPENSATING 收尾，訂單同時標記失敗",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onEvent",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onMessage",
+        "com.trading.saga.saga.OrderMarkFailedAction#compensate",
+        "com.trading.saga.order.domain.SagaInstance#transitionTo"
+      ]
+    },
+    "saga:FAILED": {
+      "entry": { "kind": "NONE" },
+      "zh": "預留值：目前沒有程式路徑會設成 FAILED（保留給「補償本身失敗、需人工」）",
+      "chain": []
+    },
+    "order:PENDING": {
+      "entry": { "kind": "HTTP", "method": "POST", "path": "/api/v1/trades" },
+      "zh": "下單時建立待成交訂單（金額＝數量×價格）",
+      "chain": [
+        "com.trading.saga.order.TradeController#place",
+        "com.trading.saga.saga.SagaOrchestrator#start",
+        "com.trading.saga.order.domain.TradeOrder#pending"
+      ]
+    },
+    "order:FILLED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.events", "property": "trading.kafka.event-topic" },
+      "zh": "收到 FUNDS_CONFIRMED → 訂單成交",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onEvent",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onMessage",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onConfirmed",
+        "com.trading.saga.order.domain.TradeOrder#markFilled"
+      ]
+    },
+    "order:FAILED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.events", "property": "trading.kafka.event-topic" },
+      "zh": "補償動作把訂單標記失敗（失敗路徑的正確收尾）",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onEvent",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onMessage",
+        "com.trading.saga.saga.OrderMarkFailedAction#compensate",
+        "com.trading.saga.order.domain.TradeOrder#markFailed"
+      ]
+    },
+    "tcc:NONE": {
+      "entry": { "kind": "HTTP", "method": "GET", "path": "/api/v1/tcc/reservations/{sagaId}" },
+      "zh": "前台查帳戶庫預留票：查無此 sagaId＝Try 尚未執行（回 200 exists=false，不是 404）",
+      "chain": [
+        "com.trading.saga.account.TccReservationController#get",
+        "com.trading.saga.account.AccountQueryService#getReservation"
+      ]
+    },
+    "tcc:TRYING": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.commands", "property": "trading.kafka.command-topic" },
+      "zh": "收到 RESERVE_FUNDS → available 轉 frozen，寫入 TRYING 預留票",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onCommand",
+        "com.trading.saga.messaging.AccountCommandHandler#onMessage",
+        "com.trading.saga.account.AccountTccService#tryReserve",
+        "com.trading.saga.account.domain.Account#tryReserve"
+      ]
+    },
+    "tcc:CONFIRMED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.commands", "property": "trading.kafka.command-topic" },
+      "zh": "收到 CONFIRM_FUNDS → frozen 扣掉（真正扣款），預留票轉 CONFIRMED",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onCommand",
+        "com.trading.saga.messaging.AccountCommandHandler#onMessage",
+        "com.trading.saga.account.AccountTccService#confirm",
+        "com.trading.saga.account.domain.TccReservation#markConfirmed"
+      ]
+    },
+    "tcc:CANCELLED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.commands", "property": "trading.kafka.command-topic" },
+      "zh": "收到 CONFIRM_FUNDS 且 forceFail＝true → 改走 Cancel，frozen 退回 available",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onCommand",
+        "com.trading.saga.messaging.AccountCommandHandler#onMessage",
+        "com.trading.saga.account.AccountTccService#confirm",
+        "com.trading.saga.account.AccountTccService#cancel",
+        "com.trading.saga.account.domain.TccReservation#markCancelled"
+      ]
+    },
+    "tcc:TRY_FAILED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.commands", "property": "trading.kafka.command-topic" },
+      "zh": "餘額不足：Account.tryReserve 拋 InsufficientFundsException，不寫預留票，回 FUNDS_FAILED",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onCommand",
+        "com.trading.saga.messaging.AccountCommandHandler#onMessage",
+        "com.trading.saga.account.AccountTccService#tryReserve",
+        "com.trading.saga.account.domain.Account#tryReserve"
+      ]
+    },
+    "action:place": {
+      "entry": { "kind": "HTTP", "method": "POST", "path": "/api/v1/trades" },
+      "zh": "只負責「啟動」：建立訂單＋Saga、RESERVE_FUNDS 進發件匣，HTTP 202 立即返回；之後全靠 Kafka 推進",
+      "chain": [
+        "com.trading.saga.order.TradeController#place",
+        "com.trading.saga.saga.SagaOrchestrator#start",
+        "com.trading.saga.messaging.OutboxPublisherService#append"
+      ]
+    },
+    "action:reset": {
+      "entry": { "kind": "HTTP", "method": "POST", "path": "/api/v1/accounts/{accountId}/reset" },
+      "zh": "把種子帳戶還原為 available=100000、frozen=0",
+      "chain": [
+        "com.trading.saga.account.AccountController#reset",
+        "com.trading.saga.account.AccountQueryService#reset",
+        "com.trading.saga.account.domain.Account#resetTo"
+      ]
+    },
+    "step:ORDER_CREATED": {
+      "entry": { "kind": "HTTP", "method": "POST", "path": "/api/v1/trades" },
+      "zh": "編排器寫下第一個 Saga 步驟（訂單已建立）",
+      "chain": [
+        "com.trading.saga.order.TradeController#place",
+        "com.trading.saga.saga.SagaOrchestrator#start"
+      ]
+    },
+    "step:RESERVE_COMMANDED": {
+      "entry": { "kind": "HTTP", "method": "POST", "path": "/api/v1/trades" },
+      "zh": "RESERVE_FUNDS 命令寫進發件匣（與訂單同一 TX，不會有「訂單成功但命令遺失」）",
+      "chain": [
+        "com.trading.saga.order.TradeController#place",
+        "com.trading.saga.saga.SagaOrchestrator#start",
+        "com.trading.saga.messaging.OutboxPublisherService#append"
+      ]
+    },
+    "step:CONFIRM_COMMANDED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.events", "property": "trading.kafka.event-topic" },
+      "zh": "收到 FUNDS_RESERVED → CONFIRM_FUNDS 命令寫進發件匣",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onEvent",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onMessage",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onReserved",
+        "com.trading.saga.messaging.OutboxPublisherService#append"
+      ]
+    },
+    "step:SAGA_COMPLETED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.events", "property": "trading.kafka.event-topic" },
+      "zh": "收到 FUNDS_CONFIRMED → 訂單成交、Saga 完成",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onEvent",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onMessage",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onConfirmed"
+      ]
+    },
+    "step:ORDER_MARK_FAILED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.events", "property": "trading.kafka.event-topic" },
+      "zh": "補償動作（CompensationAction 實作）記下這一步：訂單失敗＋Saga 補償完成",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onEvent",
+        "com.trading.saga.messaging.OrderSagaEventHandler#onMessage",
+        "com.trading.saga.saga.OrderMarkFailedAction#compensate"
+      ]
+    },
+    "msg:RESERVE_FUNDS": {
+      "entry": { "kind": "SCHEDULED", "every": "trading.outbox.poll-ms" },
+      "zh": "排程掃發件匣未送出列，送到 commands topic 後標記已送出",
+      "chain": [
+        "com.trading.saga.messaging.OutboxRelayJob#tick",
+        "com.trading.saga.messaging.OutboxPublisherService#publishPending",
+        "com.trading.saga.messaging.KafkaTemplateMessageSender#send"
+      ]
+    },
+    "msg:CONFIRM_FUNDS": {
+      "entry": { "kind": "SCHEDULED", "every": "trading.outbox.poll-ms" },
+      "zh": "排程掃發件匣未送出列，送到 commands topic 後標記已送出",
+      "chain": [
+        "com.trading.saga.messaging.OutboxRelayJob#tick",
+        "com.trading.saga.messaging.OutboxPublisherService#publishPending",
+        "com.trading.saga.messaging.KafkaTemplateMessageSender#send"
+      ]
+    },
+    "msg:CANCEL_FUNDS": {
+      "entry": { "kind": "NONE" },
+      "zh": "擴增點：帳戶側已能處理（AccountTccService.cancel），但目前沒有程式送出這個命令",
+      "chain": []
+    },
+    "msg:FUNDS_RESERVED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.commands", "property": "trading.kafka.command-topic" },
+      "zh": "Try 成功後帳戶側直接回事件到 events topic（不經發件匣）",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onCommand",
+        "com.trading.saga.messaging.AccountCommandHandler#onMessage",
+        "com.trading.saga.messaging.AccountCommandHandler#publish",
+        "com.trading.saga.messaging.KafkaTemplateMessageSender#send"
+      ]
+    },
+    "msg:FUNDS_CONFIRMED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.commands", "property": "trading.kafka.command-topic" },
+      "zh": "Confirm 成功後帳戶側直接回事件到 events topic",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onCommand",
+        "com.trading.saga.messaging.AccountCommandHandler#onMessage",
+        "com.trading.saga.messaging.AccountCommandHandler#publish",
+        "com.trading.saga.messaging.KafkaTemplateMessageSender#send"
+      ]
+    },
+    "msg:FUNDS_FAILED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.commands", "property": "trading.kafka.command-topic" },
+      "zh": "Try 失敗（餘額不足）時帳戶側回事件，訂單側據此補償",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onCommand",
+        "com.trading.saga.messaging.AccountCommandHandler#onMessage",
+        "com.trading.saga.messaging.AccountCommandHandler#publish",
+        "com.trading.saga.messaging.KafkaTemplateMessageSender#send"
+      ]
+    },
+    "msg:FUNDS_CANCELLED": {
+      "entry": { "kind": "KAFKA", "topic": "trading.saga.commands", "property": "trading.kafka.command-topic" },
+      "zh": "forceFail 走 Cancel 退款後帳戶側回事件，訂單側據此補償",
+      "chain": [
+        "com.trading.saga.messaging.SagaKafkaListeners#onCommand",
+        "com.trading.saga.messaging.AccountCommandHandler#onMessage",
+        "com.trading.saga.messaging.AccountCommandHandler#publish",
+        "com.trading.saga.messaging.KafkaTemplateMessageSender#send"
+      ]
+    }
+  }
+}

@@ -4,10 +4,11 @@
  * 狀態推導全在 dashboard.js（純函式，可單元測試）；本檔只負責拉資料、輪詢、重播與導航。
  * 【使用】由 index.html 以 module 載入；按鈕綁 place(false)／place(true)／placeInsufficient。
  * 網址加 ?autoReplay=0 可關閉「完成後自動慢動作重播」（UI Smoke 用來直接斷言終態）。
+ * 滑鼠停在帶 data-trace 的區塊／按鈕／時間軸列上，顯示呼叫鏈 tooltip（DASH-004，資料 /code-trace.json）。
  */
 import { createApp, ref, computed, onMounted } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
 import {
-    liveSnapshot, buildLanes, buildVerdict, buildTimeline, diffLanes, STATUS_LEGEND, EMPTY_SNAPSHOT
+    liveSnapshot, buildLanes, buildVerdict, buildTimeline, diffLanes, buildTrace, STATUS_LEGEND, EMPTY_SNAPSHOT
 } from './dashboard.js';
 
 const API = '/api/v1';
@@ -37,7 +38,7 @@ const StateLane = {
         </div>
         <div class="sm-track">
           <div v-for="st in lane.stages" :key="st.no" class="sm-stage" :class="'st-' + st.status"
-               :data-status="st.status" :data-code="st.code">
+               :data-status="st.status" :data-code="st.code" :data-trace="st.trace">
             <div class="sm-no">{{ st.no }}<span v-if="st.tag" class="sm-tag">{{ st.tag }}</span></div>
             <div class="sm-zh"><i class="bi me-1" :class="st.icon"></i>{{ st.zh }}</div>
             <div class="sm-code">{{ st.code }}</div>
@@ -45,7 +46,7 @@ const StateLane = {
           </div>
           <div class="sm-fork">
             <div v-for="op in lane.fork" :key="op.no" class="sm-stage sm-end" :class="'st-' + op.status"
-                 :data-status="op.status" :data-code="op.code">
+                 :data-status="op.status" :data-code="op.code" :data-trace="op.trace">
               <div class="sm-no">{{ op.no }}<span v-if="op.tag" class="sm-tag">{{ op.tag }}</span></div>
               <div class="sm-zh"><i class="bi me-1" :class="op.icon"></i>{{ op.zh }} <code class="sm-code-inline">{{ op.code }}</code></div>
               <div class="sm-desc">{{ op.desc }}</div>
@@ -77,6 +78,12 @@ createApp({
         let replayToken = 0;
 
         const activeSection = ref('dashboard');
+
+        /** DASH-004 呼叫鏈：traces＝code-trace.json；tip＝目前顯示的 tooltip（null 為隱藏）。 */
+        const traces = ref(null);
+        const showTrace = ref(true);
+        const tip = ref(null);
+        let hideTimer = null;
 
         /** 【使用】依 Saga 終態選 badge 色：COMPLETED 綠；COMPENSATED／FAILED 黃。 */
         const sagaBadge = computed(() => {
@@ -391,9 +398,70 @@ createApp({
             });
         };
 
+        /** 【使用】滑鼠移進 tooltip 本身時取消隱藏，方便選取／複製方法名。 */
+        const keepTip = () => clearTimeout(hideTimer);
+
+        /** 【技巧】延遲 150ms 隱藏：滑鼠從區塊移到 tooltip 的途中不會閃掉。 */
+        const hideTip = () => {
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(() => { tip.value = null; }, 150);
+        };
+
+        /**
+         * 【職責】把 tooltip 定位在目標元素下方；下方空間不足時改放上方。
+         * @param {Element} el 帶 data-trace 的元素
+         */
+        const showTipFor = (el) => {
+            const trace = buildTrace(traces.value, el.dataset.trace);
+            if (!trace) return;
+            clearTimeout(hideTimer);
+            const r = el.getBoundingClientRect();
+            const width = Math.min(440, window.innerWidth - 16);
+            const above = r.bottom + 230 > window.innerHeight && r.top > 230;
+            tip.value = {
+                trace,
+                above,
+                x: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
+                y: above ? r.top - 6 : r.bottom + 6
+            };
+        };
+
+        /**
+         * 【技巧】事件委派：整頁只掛一組 mouseover／mouseout，找最近的 [data-trace] 祖先；
+         * lane 區塊、按鈕、時間軸列都是 v-for 動態產生，不必逐一綁事件。
+         */
+        const watchTraceHover = () => {
+            document.addEventListener('mouseover', (e) => {
+                if (!showTrace.value) {
+                    tip.value = null;
+                    return;
+                }
+                const el = e.target.closest?.('[data-trace]');
+                if (el) showTipFor(el);
+            });
+            document.addEventListener('mouseout', (e) => {
+                const el = e.target.closest?.('[data-trace]');
+                if (el && !el.contains(e.relatedTarget)) hideTip();
+            });
+            // tooltip 是 position:fixed；頁面捲動（含 smooth scroll）時目標已移走，直接收起避免指錯列
+            window.addEventListener('scroll', () => { tip.value = null; }, { passive: true });
+        };
+
+        /** 【概念】對照表載入失敗只影響 tooltip，不影響下單與狀態機；故吞錯不 toast。 */
+        const loadTraces = async () => {
+            try {
+                const res = await fetch('/code-trace.json');
+                if (res.ok) traces.value = (await res.json()).traces;
+            } catch {
+                traces.value = null;
+            }
+        };
+
         onMounted(() => {
             refresh();
             watchSections();
+            loadTraces();
+            watchTraceHover();
         });
 
         return {
@@ -401,6 +469,7 @@ createApp({
             sagaBadge, orderBadge, orderBadgeClass, refresh, place, placeInsufficient, resetAccount, eventClass,
             lanes, verdict, timeline, replayIndex, replaying, autoReplay, replaySpeed, changedLanes,
             startReplay, backToLive, jumpTo, inspectOrder, scrollTo, fmtOffset, activeSection,
+            showTrace, tip, keepTip, hideTip,
             legend: STATUS_LEGEND
         };
     }
