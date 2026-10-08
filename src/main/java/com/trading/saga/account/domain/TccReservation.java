@@ -14,16 +14,16 @@ import java.time.Instant;
 
 /**
  * 【職責】帳戶庫的 TCC 預留紀錄（俗稱「預留票」），以 sagaId 當自然鍵以利冪等 Try／Cancel。
- * 【技巧】同一 saga 重送 Reserve 時直接回既有列，不重複扣 available。
- * 狀態轉換寫成實體方法（{@link #markConfirmed}／{@link #markCancelled}）並自帶前置檢查，
- * 讓「CONFIRMED 後不能 Cancel」這類規則跟著資料走，Service 不必重抄。
- * 【概念】預留票＝帳戶側的 TCC 憑證（非訂單）：
- * Try 發票（available→frozen＋寫本列）；Confirm 兌票扣款（吃掉 frozen）；Cancel 退票還原。
- * 訂單庫看不到此表，只靠 Kafka 事件得知結果。
- * Try 失敗（餘額不足）<b>不寫</b>本列，所以「查無票」本身就代表「錢從未被凍結」。
- * 【使用】經 {@code AccountTccService}／Repository 操作；PK＝sagaId（冪等 Key）。
- * 【邊界】這是帳戶自己的「預留票」；不要與 trade_orders 混淆。
- * 本表無 {@code @Version}；併發保護依賴「key＝sagaId 的命令同分區依序消費」，不是靠樂觀鎖。
+ * <p>【技巧】同一 saga 重送 Reserve 時直接回既有列，不重複扣 available。
+ * <br>狀態轉換寫成實體方法（{@link #markConfirmed}／{@link #markCancelled}）並自帶前置檢查，
+ * <br>讓「CONFIRMED 後不能 Cancel」這類規則跟著資料走，Service 不必重抄。
+ * <p>【概念】預留票＝帳戶側的 TCC 憑證（非訂單）：
+ * <br>Try 發票（available→frozen＋寫本列）；Confirm 兌票扣款（吃掉 frozen）；Cancel 退票還原。
+ * <br>訂單庫看不到此表，只靠 Kafka 事件得知結果。
+ * <br>Try 失敗（餘額不足）<b>不寫</b>本列，所以「查無票」本身就代表「錢從未被凍結」。
+ * <p>【使用】經 {@code AccountTccService}／Repository 操作；PK＝sagaId（冪等 Key）。
+ * <p>【邊界】這是帳戶自己的「預留票」；不要與 trade_orders 混淆。
+ * <br>本表無 {@code @Version}；併發保護依賴「key＝sagaId 的命令同分區依序消費」，不是靠樂觀鎖。
  */
 @Entity
 @Table(name = "tcc_reservations")
@@ -63,8 +63,8 @@ public class TccReservation {
 
     /**
      * 【職責】建立 TRYING 預留（尚未 persist）。
-     * 【概念】只在 {@code Account.tryReserve} 成功（available 已轉 frozen）之後建立；兩者在同一 account TX 內同進同退。
-     * 【使用】Try 成功後 {@code reservationRepository.save(TccReservation.trying(...))}。
+     * <p>【概念】只在 {@code Account.tryReserve} 成功（available 已轉 frozen）之後建立；兩者在同一 account TX 內同進同退。
+     * <p>【使用】Try 成功後 {@code reservationRepository.save(TccReservation.trying(...))}。
      *
      * @param sagaId    流程 id（成為本票主鍵）
      * @param accountId 被凍結的帳戶
@@ -77,9 +77,9 @@ public class TccReservation {
 
     /**
      * 【職責】標記已 Confirm（TRYING → CONFIRMED）。
-     * 【概念】CONFIRMED 是終態：錢已真正扣掉，之後不能再 Cancel。
-     * 「已 CONFIRMED 再 Confirm」的冪等由 {@code AccountTccService.confirm} 先判斷後直接回 true，不會呼叫到這裡。
-     * 【使用】僅 Confirm 成功路徑；非 TRYING 會丟 IllegalStateException。
+     * <p>【概念】CONFIRMED 是終態：錢已真正扣掉，之後不能再 Cancel。
+     * <br>「已 CONFIRMED 再 Confirm」的冪等由 {@code AccountTccService.confirm} 先判斷後直接回 true，不會呼叫到這裡。
+     * <p>【使用】僅 Confirm 成功路徑；非 TRYING 會丟 IllegalStateException。
      *
      * @throws IllegalStateException 目前不是 TRYING（例如已 CANCELLED）
      */
@@ -92,8 +92,8 @@ public class TccReservation {
 
     /**
      * 【職責】標記已 Cancel；已 CANCELLED 則冪等略過。
-     * 【技巧】回傳布林值讓呼叫端知道「這次是否真的轉出」，只有 true 才把 frozen 還回 available，避免重送時重複退款。
-     * 【使用】Cancel／forceFail 路徑；回 true 表示本次真正從 TRYING 轉出（才需還錢）。
+     * <p>【技巧】回傳布林值讓呼叫端知道「這次是否真的轉出」，只有 true 才把 frozen 還回 available，避免重送時重複退款。
+     * <p>【使用】Cancel／forceFail 路徑；回 true 表示本次真正從 TRYING 轉出（才需還錢）。
      *
      * @return true 表示本次真正從 TRYING 轉出
      * @throws IllegalStateException 目前是 CONFIRMED（已扣款不能退票）

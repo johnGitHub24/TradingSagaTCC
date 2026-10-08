@@ -21,16 +21,16 @@ import java.util.Map;
 
 /**
  * 【職責】訂單庫 DataSource／EMF／Tx：orders、saga、outbox。
- * 【技巧】{@code @Primary} 給 H2 Console 與預設 JPA 探測；帳戶庫另檔組裝。
- * 【概念】這條邊界寫入不得出現帳戶 Entity。
+ * <p>【技巧】{@code @Primary} 給 H2 Console 與預設 JPA 探測；帳戶庫另檔組裝。
+ * <p>【概念】這條邊界寫入不得出現帳戶 Entity。
  *
  * <p>【重要·局部全成或全敗 ≠ Global TX】
- * {@code orderTransactionManager} 管的是單一訂單庫內的 ACID：
- * 同一 {@code @Transactional("orderTransactionManager")} 裡寫的訂單／Saga／Outbox，
- * 「全部成功才 commit；任一失敗全部 rollback」——語感上像 GlobalTransactionManager，
- * 但範圍只限 orderdb，不是 JTA／XA 跨庫的 Global Transaction。
- * 帳戶庫另有 {@code accountTransactionManager}；兩庫禁止綁成一筆 XA。
- * 跨庫最終一致靠 Saga＋Outbox＋Kafka＋TCC／補償，不是靠全域事務管理員。
+ * <br>{@code orderTransactionManager} 管的是單一訂單庫內的 ACID：
+ * <br>同一 {@code @Transactional("orderTransactionManager")} 裡寫的訂單／Saga／Outbox，
+ * <br>「全部成功才 commit；任一失敗全部 rollback」——語感上像 GlobalTransactionManager，
+ * <br>但範圍只限 orderdb，不是 JTA／XA 跨庫的 Global Transaction。
+ * <br>帳戶庫另有 {@code accountTransactionManager}；兩庫禁止綁成一筆 XA。
+ * <br>跨庫最終一致靠 Saga＋Outbox＋Kafka＋TCC／補償，不是靠全域事務管理員。
  *
  * <p>【概念·XA 是什麼（初學者必讀）】
  * <ul>
@@ -98,10 +98,10 @@ public class OrderDataSourceConfig {
 
     /**
      * 【職責】訂單庫交易管理器：本庫內「全部成功才成功，否則全部回滾」。
-     * 【技巧】綁 {@code orderEntityManagerFactory}；業務用
-     * {@code @Transactional("orderTransactionManager")} 掛這條。
-     * 【概念·很重要】語感類似 GlobalTransactionManager 的「全有或全無」，
-     * 但這是局部（Local）TX，只涵蓋訂單庫（含 Outbox 表）。詳見類別上方【概念·XA 是什麼】。
+     * <p>【技巧】綁 {@code orderEntityManagerFactory}；業務用
+     * <br>{@code @Transactional("orderTransactionManager")} 掛這條。
+     * <p>【概念·很重要】語感類似 GlobalTransactionManager 的「全有或全無」，
+     * <br>但這是局部（Local）TX，只涵蓋訂單庫（含 Outbox 表）。詳見類別上方【概念·XA 是什麼】。
      * <ul>
      *   <li>同方法內：訂單＋Saga＋Outbox append → 同進同退（Outbox 必須掛這條）。</li>
      *   <li>不是 XA：不會把訂單庫＋帳戶庫交給同一個全域裁判做 2PC

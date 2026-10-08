@@ -18,11 +18,11 @@ import java.util.List;
 
 /**
  * 【職責】HTTP 轉下單／查單／查 Saga；禁止碰 Repository。
- * 【技巧】寫入走 {@link SagaOrchestrator}；讀取走 {@link TradeQueryService}。
- * 【使用】前台 {@code app.js}／Smoke／Swagger 都打 {@code /api/v1/...}。
+ * <p>【技巧】寫入走 {@link SagaOrchestrator}；讀取走 {@link TradeQueryService}。
+ * <p>【使用】前台 {@code app.js}／Smoke／Swagger 都打 {@code /api/v1/...}。
  *
  * <p>【怎麼運作】{@code @RestController} → Spring MVC 登錄路由；建構子注入兩個 Service Bean，
- * 沒有 {@code new SagaOrchestrator(...)}。請求進來 → 方法 → 轉交 Service。
+ * <br>沒有 {@code new SagaOrchestrator(...)}。請求進來 → 方法 → 轉交 Service。
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -33,7 +33,7 @@ public class TradeController {
 
     /**
      * 【職責】注入編排與查詢（建構子注入）。
-     * 【概念】Controller 薄：只轉呼叫，不自己組依賴。
+     * <p>【概念】Controller 薄：只轉呼叫，不自己組依賴。
      */
     public TradeController(SagaOrchestrator sagaOrchestrator, TradeQueryService tradeQueryService) {
         this.sagaOrchestrator = sagaOrchestrator;
@@ -42,8 +42,8 @@ public class TradeController {
 
     /**
      * 【職責】啟動 Saga，回 202＋訂單快照（多為 PENDING）。
-     * 【概念】202＝已接受編排，≠扣款完成。
-     * 【使用】
+     * <p>【概念】202＝已接受編排，≠扣款完成。
+     * <p>【使用】
      * <pre>
      * POST /api/v1/trades
      * {"accountId":"ACC-001","symbol":"BTCUSDT","side":"BUY","quantity":1,"price":10000,"forceFail":false}
@@ -60,7 +60,7 @@ public class TradeController {
 
     /**
      * 【職責】訂單列表（新到舊）。
-     * 【使用】{@code GET /api/v1/trades}；Demo 面板刷新用。
+     * <p>【使用】{@code GET /api/v1/trades}；Demo 面板刷新用。
      */
     @GetMapping("/trades")
     public List<TradeResponse> list() {
@@ -69,7 +69,7 @@ public class TradeController {
 
     /**
      * 【職責】單筆訂單；不存在 → 404。
-     * 【使用】Case TRADE-001：{@code GET /api/v1/trades/missing-order}。
+     * <p>【使用】Case TRADE-001：{@code GET /api/v1/trades/missing-order}。
      *
      * @param orderId 訂單 id
      */
@@ -80,7 +80,7 @@ public class TradeController {
 
     /**
      * 【職責】Saga 狀態＋步驟時間軸。
-     * 【使用】前台 {@code pollSaga(sagaId)}；終態 COMPLETED／COMPENSATED／FAILED。
+     * <p>【使用】前台 {@code pollSaga(sagaId)}；終態 COMPLETED／COMPENSATED／FAILED。
      *
      * @param sagaId 流程 id（下單回傳）
      */

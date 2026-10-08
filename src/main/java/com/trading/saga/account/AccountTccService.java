@@ -16,16 +16,16 @@ import java.util.Optional;
 
 /**
  * 【職責】帳戶庫內的 TCC：Try 凍結、Confirm 扣款、Cancel 釋放。
- * 【技巧】以 sagaId 當預留票主鍵做冪等；forceFail 在 Confirm 改走 Cancel（教學補償）。
- * 【概念】這是「單資源兩階段」；跨庫成敗由 Saga 聽 Kafka 事件決定。
- * 【概念·預留票】{@code tcc_reservations} 一列＝一張預留票（PK＝sagaId）：
- * 證明「這筆 Saga 在帳戶側預留了多少、走到 TRYING／CONFIRMED／CANCELLED」。
- * 不是訂單；重送同 sagaId 看到票已存在就不再二次扣 available。
- * 【使用】實作 {@link TccResource}；由 {@code AccountCommandHandler} 呼叫，勿從 HTTP Controller 直呼。
- * 【邊界】只用 accountTransactionManager；不寫訂單表。
+ * <p>【技巧】以 sagaId 當預留票主鍵做冪等；forceFail 在 Confirm 改走 Cancel（教學補償）。
+ * <p>【概念】這是「單資源兩階段」；跨庫成敗由 Saga 聽 Kafka 事件決定。
+ * <p>【概念·預留票】{@code tcc_reservations} 一列＝一張預留票（PK＝sagaId）：
+ * <br>證明「這筆 Saga 在帳戶側預留了多少、走到 TRYING／CONFIRMED／CANCELLED」。
+ * <br>不是訂單；重送同 sagaId 看到票已存在就不再二次扣 available。
+ * <p>【使用】實作 {@link TccResource}；由 {@code AccountCommandHandler} 呼叫，勿從 HTTP Controller 直呼。
+ * <p>【邊界】只用 accountTransactionManager；不寫訂單表。
  *
  * <p>【怎麼運作／注入】{@code @Service} + {@code implements TccResource} →
- * 登錄成 TCC Bean；{@link com.trading.saga.messaging.AccountCommandHandler} 寫介面即可拿到本類。
+ * <br>登錄成 TCC Bean；{@link com.trading.saga.messaging.AccountCommandHandler} 寫介面即可拿到本類。
  */
 @Service
 public class AccountTccService implements TccResource {
@@ -35,7 +35,7 @@ public class AccountTccService implements TccResource {
 
     /**
      * 【職責】注入帳戶庫 Repository（建構子注入）。
-     * 【使用】Spring 建構；測試可用 Mockito 注入假 Repository。
+     * <p>【使用】Spring 建構；測試可用 Mockito 注入假 Repository。
      *
      * @param accountRepository     帳戶表
      * @param reservationRepository TCC 預留票表（{@code tcc_reservations}；PK＝sagaId＝冪等 Key）
@@ -48,9 +48,9 @@ public class AccountTccService implements TccResource {
 
     /**
      * 【職責】Try：從 available 轉入 frozen，並寫入預留票。
-     * 【技巧】{@code findById(sagaId)} 已存在則不重複扣款（冪等 Key＝sagaId）。
-     * 【概念】回 false 表示「這步失敗、應補償」，不是丟例外給 Kafka。
-     * 【使用】對應 Case SAGA-001（成功）／SAGA-002（不足回 false）。
+     * <p>【技巧】{@code findById(sagaId)} 已存在則不重複扣款（冪等 Key＝sagaId）。
+     * <p>【概念】回 false 表示「這步失敗、應補償」，不是丟例外給 Kafka。
+     * <p>【使用】對應 Case SAGA-001（成功）／SAGA-002（不足回 false）。
      * <pre>
      * // SAGA-001
      * assertTrue(tcc.tryReserve(sagaId, "ACC-001", new BigDecimal("10000")));
@@ -84,9 +84,9 @@ public class AccountTccService implements TccResource {
 
     /**
      * 【職責】Confirm：消耗凍結（真正扣款）；或 forceFail 改 Cancel。
-     * 【技巧】已 CONFIRMED 再呼叫回 true；forceFail 先 {@link #cancel} 再回 false。
-     * 【概念】Confirm 成功後 total＝available+frozen 會下降。
-     * 【使用】對應 Case SAGA-001（forceFail=false）／TCC-002（forceFail=true）。
+     * <p>【技巧】已 CONFIRMED 再呼叫回 true；forceFail 先 {@link #cancel} 再回 false。
+     * <p>【概念】Confirm 成功後 total＝available+frozen 會下降。
+     * <p>【使用】對應 Case SAGA-001（forceFail=false）／TCC-002（forceFail=true）。
      * <pre>
      * tcc.tryReserve(sagaId, "ACC-001", amount);
      * tcc.confirm(sagaId, false); // → CONFIRMED，扣款
@@ -118,9 +118,9 @@ public class AccountTccService implements TccResource {
 
     /**
      * 【職責】Cancel：把凍結還回 available。
-     * 【技巧】無列／已 CANCELLED → 空操作；僅 TRYING→CANCELLED 時才真正還錢。
-     * 【概念】帳戶補償靠此方法；訂單 FAILED 不在這裡寫。
-     * 【使用】由 {@link #confirm}（forceFail）或 {@code CANCEL_FUNDS} 觸發；可安全重入。
+     * <p>【技巧】無列／已 CANCELLED → 空操作；僅 TRYING→CANCELLED 時才真正還錢。
+     * <p>【概念】帳戶補償靠此方法；訂單 FAILED 不在這裡寫。
+     * <p>【使用】由 {@link #confirm}（forceFail）或 {@code CANCEL_FUNDS} 觸發；可安全重入。
      * <pre>
      * tcc.cancel(sagaId);
      * tcc.cancel(sagaId); // 第二次無害

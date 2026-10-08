@@ -13,11 +13,11 @@ import java.math.BigDecimal;
 
 /**
  * 【職責】帳戶查詢與練習重置；並實作 {@link AccountLookup} 給訂單側啟動前確認存在。
- * 【使用】HTTP 經 {@link AccountController}；編排經 {@link AccountLookup#requireExists}。
- * 【邊界】唯讀查詢用 account TM；reset 只改帳戶庫。
+ * <p>【使用】HTTP 經 {@link AccountController}；編排經 {@link AccountLookup#requireExists}。
+ * <p>【邊界】唯讀查詢用 account TM；reset 只改帳戶庫。
  *
  * <p>【怎麼運作／注入】{@code @Service} + {@code implements AccountLookup} →
- * 同時是查詢服務與 Lookup 埠；Orchestrator 寫介面即可拿到本類。
+ * <br>同時是查詢服務與 Lookup 埠；Orchestrator 寫介面即可拿到本類。
  */
 @Service
 public class AccountQueryService implements AccountLookup {
@@ -39,7 +39,7 @@ public class AccountQueryService implements AccountLookup {
 
     /**
      * 【職責】帳戶必須存在，否則拋 404。
-     * 【使用】{@code SagaOrchestrator.start} 開頭呼叫；只讀帳戶庫（允許跨庫讀）。
+     * <p>【使用】{@code SagaOrchestrator.start} 開頭呼叫；只讀帳戶庫（允許跨庫讀）。
      * <pre>
      * accountLookup.requireExists("ACC-001");
      * </pre>
@@ -54,7 +54,7 @@ public class AccountQueryService implements AccountLookup {
 
     /**
      * 【職責】查詢帳戶餘額 DTO。
-     * 【使用】Case ACCOUNT-001；前台顯示 available／frozen。
+     * <p>【使用】Case ACCOUNT-001；前台顯示 available／frozen。
      *
      * @param accountId 帳戶代號
      * @return DTO
@@ -68,8 +68,8 @@ public class AccountQueryService implements AccountLookup {
 
     /**
      * 【職責】查詢某 Saga 的 TCC 預留票狀態（Case TCC-001；前台 Dashboard 的 TCC 狀態機）。
-     * 【概念】查無票回 {@link TccReservationResponse#none}（200），不拋 404：
-     * 「無票」代表 Try 尚未執行或 Try 失敗，本身就是要畫出來的狀態。
+     * <p>【概念】查無票回 {@link TccReservationResponse#none}（200），不拋 404：
+     * <br>「無票」代表 Try 尚未執行或 Try 失敗，本身就是要畫出來的狀態。
      * <pre>
      * accountQueryService.getReservation(sagaId); // exists=true, state=CONFIRMED
      * </pre>
@@ -86,7 +86,7 @@ public class AccountQueryService implements AccountLookup {
 
     /**
      * 【職責】還原種子餘額，方便前台重跑劇情。
-     * 【使用】每輪 Demo／Smoke 前：
+     * <p>【使用】每輪 Demo／Smoke 前：
      * <pre>
      * accountQueryService.reset("ACC-001"); // available=100000, frozen=0
      * </pre>

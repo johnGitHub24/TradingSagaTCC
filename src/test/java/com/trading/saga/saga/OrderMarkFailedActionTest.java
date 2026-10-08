@@ -25,9 +25,9 @@ import static org.mockito.Mockito.verify;
 
 /**
  * 【職責】補償動作單元層：與 SAGA-002／TCC-002 同一「訂單 FAILED + Saga COMPENSATED」。
- * 覆蓋 {@link OrderMarkFailedAction#compensate(String)}（訂單庫側補償；由 {@code OrderSagaEventHandler}
- * 在收到 {@code FUNDS_FAILED}／{@code FUNDS_CANCELLED} 時呼叫）。
- * 【技巧】
+ * <br>覆蓋 {@link OrderMarkFailedAction#compensate(String)}（訂單庫側補償；由 {@code OrderSagaEventHandler}
+ * <br>在收到 {@code FUNDS_FAILED}／{@code FUNDS_CANCELLED} 時呼叫）。
+ * <p>【技巧】
  * <ul>
  *   <li>{@code @InjectMocks}：Mockito 以建構子把三個 Repository mock 注入被測物件。</li>
  *   <li>Saga／訂單用真的領域物件（{@link SagaInstance#start}、{@link TradeOrder#pending}）建立，
@@ -35,9 +35,9 @@ import static org.mockito.Mockito.verify;
  *       因為是同一個 Java 實例，補償後可直接讀它們的狀態做斷言。</li>
  *   <li>{@code verify(mock, never())}：驗證某方法「一次都沒被呼叫」，用來證明終態時提早 return。</li>
  * </ul>
- * 【概念】補償不是回滾帳戶庫：帳戶的錢由 TCC Cancel 自己還原；本動作只把訂單庫收尾成
- * 「訂單 FAILED、Saga COMPENSATING → COMPENSATED」，並記一筆 {@code ORDER_MARK_FAILED} 步驟。
- * Saga 已是終態（COMPLETED／COMPENSATED／FAILED）時直接 return，讓 Kafka 重送同一事件也無害（冪等）。
+ * <p>【概念】補償不是回滾帳戶庫：帳戶的錢由 TCC Cancel 自己還原；本動作只把訂單庫收尾成
+ * <br>「訂單 FAILED、Saga COMPENSATING → COMPENSATED」，並記一筆 {@code ORDER_MARK_FAILED} 步驟。
+ * <br>Saga 已是終態（COMPLETED／COMPENSATED／FAILED）時直接 return，讓 Kafka 重送同一事件也無害（冪等）。
  */
 // 啟用 Mockito：處理 @Mock／@InjectMocks，並在每個 Test 結束檢查是否有多餘的 stub（嚴格模式）
 @ExtendWith(MockitoExtension.class)

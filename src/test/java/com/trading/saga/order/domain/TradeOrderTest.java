@@ -9,9 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 【職責】保護 {@link TradeOrder#pending} 的金額契約（領域層）；對應 Case SAGA-001（下單金額＝凍結金額）。
- * 【技巧】純物件斷言，不啟動 Spring、不連 DB；用 {@code getScale()} 直接檢查 BigDecimal 的小數位數。
- * 【概念】amount 會被帶進 RESERVE_FUNDS 命令，帳戶側據此凍結資金；它必須和落庫後的值完全相同
- * （欄位 scale 4），否則 202 回應、Kafka 命令與 DB 三處金額會不一致。
+ * <p>【技巧】純物件斷言，不啟動 Spring、不連 DB；用 {@code getScale()} 直接檢查 BigDecimal 的小數位數。
+ * <p>【概念】amount 會被帶進 RESERVE_FUNDS 命令，帳戶側據此凍結資金；它必須和落庫後的值完全相同
+ * <br>（欄位 scale 4），否則 202 回應、Kafka 命令與 DB 三處金額會不一致。
  */
 // 測試報告／IDE 上顯示的名稱
 @DisplayName("TradeOrder unit")

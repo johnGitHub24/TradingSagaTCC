@@ -14,10 +14,10 @@ import java.math.BigDecimal;
 
 /**
  * 【職責】帳戶庫的資金聚合：available／frozen，只在本庫交易內變更。
- * 【技巧】TCC 三方法都用 {@link BigDecimal#compareTo} 比大小，不用 equals。
- * 【概念】Try＝預留（轉凍結）、Confirm＝真正扣款（凍結消失）、Cancel＝補償（凍結回到可用）。
- * 【使用】經由 {@code AccountTccService} 呼叫；勿在 Controller 直接改欄位。
- * 【邊界】不寫訂單表、不發 Kafka。
+ * <p>【技巧】TCC 三方法都用 {@link BigDecimal#compareTo} 比大小，不用 equals。
+ * <p>【概念】Try＝預留（轉凍結）、Confirm＝真正扣款（凍結消失）、Cancel＝補償（凍結回到可用）。
+ * <p>【使用】經由 {@code AccountTccService} 呼叫；勿在 Controller 直接改欄位。
+ * <p>【邊界】不寫訂單表、不發 Kafka。
  */
 @Entity
 @Table(name = "accounts")
@@ -40,7 +40,7 @@ public class Account {
 
     /**
      * 【職責】TCC Try：available → frozen。
-     * 【使用】僅在尚未有預留票時由 Service 呼叫一次。
+     * <p>【使用】僅在尚未有預留票時由 Service 呼叫一次。
      * <pre>
      * account.tryReserve(new BigDecimal("10000"));
      * // available -= 10000；frozen += 10000
@@ -60,7 +60,7 @@ public class Account {
 
     /**
      * 【職責】TCC Confirm：消耗 frozen（真正扣款，不退回 available）。
-     * 【使用】Try 成功且要成交時；amount 須與 Try 相同。
+     * <p>【使用】Try 成功且要成交時；amount 須與 Try 相同。
      * <pre>
      * account.confirm(amount); // frozen -= amount；total 下降
      * </pre>
@@ -77,7 +77,7 @@ public class Account {
 
     /**
      * 【職責】TCC Cancel：frozen → available（補償還原）。
-     * 【使用】forceFail 或業務取消預留時。
+     * <p>【使用】forceFail 或業務取消預留時。
      * <pre>
      * account.cancel(amount); // frozen -= amount；available += amount
      * </pre>
@@ -95,7 +95,7 @@ public class Account {
 
     /**
      * 【職責】Demo／測試重置種子餘額。
-     * 【使用】{@code POST /api/v1/accounts/ACC-001/reset} 最終會呼叫此方法。
+     * <p>【使用】{@code POST /api/v1/accounts/ACC-001/reset} 最終會呼叫此方法。
      *
      * @param availableAmount 可用
      * @param frozenAmount    凍結（通常 0）
@@ -107,7 +107,7 @@ public class Account {
 
     /**
      * 【職責】計算名義總額。
-     * 【概念】Confirm 後 total 會下降；Try／Cancel 期間 total 不變。
+     * <p>【概念】Confirm 後 total 會下降；Try／Cancel 期間 total 不變。
      *
      * @return available + frozen
      */

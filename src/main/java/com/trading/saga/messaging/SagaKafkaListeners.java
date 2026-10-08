@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * 【職責】Kafka listener：command → 帳戶 TCC；event → 訂單編排。
- * 【技巧】兩個 {@link DomainEventConsumer} 用 {@code @Qualifier} 分開，預留拆進程。
- * 【使用】應用啟動後自動訂閱；無需業務程式呼叫。測試用內嵌／EmbeddedKafka 即可觸發。
+ * <p>【技巧】兩個 {@link DomainEventConsumer} 用 {@code @Qualifier} 分開，預留拆進程。
+ * <p>【使用】應用啟動後自動訂閱；無需業務程式呼叫。測試用內嵌／EmbeddedKafka 即可觸發。
  *
  * <p>【怎麼運作】
  * <ol>
@@ -29,8 +29,8 @@ public class SagaKafkaListeners {
 
     /**
      * 【職責】綁定兩個消費者 Bean（建構子注入＋{@code @Qualifier}）。
-     * 【技巧】介面相同時必須 Qualifier；對照 {@link OutboxRelayJob} 只有一個實作就不必。
-     * 【概念】不是 Listener「自己 new Handler」——Spring 先建好兩個 Handler，再塞進本建構子。
+     * <p>【技巧】介面相同時必須 Qualifier；對照 {@link OutboxRelayJob} 只有一個實作就不必。
+     * <p>【概念】不是 Listener「自己 new Handler」——Spring 先建好兩個 Handler，再塞進本建構子。
      *
      * @param accountCommandHandler 帳戶參與者（bean 名 accountCommandHandler）
      * @param orderSagaEventHandler 訂單編排（bean 名 orderSagaEventHandler）
@@ -43,7 +43,7 @@ public class SagaKafkaListeners {
 
     /**
      * 【職責】消費 TCC 命令 topic。
-     * 【使用】訊息由 Outbox {@code publishPending} 送入；payload 反序列化為 {@link SagaMessage}。
+     * <p>【使用】訊息由 Outbox {@code publishPending} 送入；payload 反序列化為 {@link SagaMessage}。
      *
      * @param message 命令信封（RESERVE／CONFIRM／CANCEL_FUNDS）
      */
@@ -54,7 +54,7 @@ public class SagaKafkaListeners {
 
     /**
      * 【職責】消費 TCC 結果 event topic。
-     * 【使用】由帳戶側 {@code AccountCommandHandler} 發布後進入。
+     * <p>【使用】由帳戶側 {@code AccountCommandHandler} 發布後進入。
      *
      * @param message 事件信封（FUNDS_RESERVED／CONFIRMED／FAILED／CANCELLED）
      */

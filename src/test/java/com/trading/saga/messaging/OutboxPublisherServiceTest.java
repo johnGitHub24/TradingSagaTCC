@@ -22,13 +22,13 @@ import static org.mockito.Mockito.verify;
 
 /**
  * 【職責】Outbox 單元層：OUTBOX-001 append 為 unpublished，publishPending 才送 Kafka。
- * 覆蓋 {@link OutboxPublisherService} 的兩個公開方法：
+ * <br>覆蓋 {@link OutboxPublisherService} 的兩個公開方法：
  * <ul>
  *   <li>{@code append}：只在訂單庫 {@code outbox_events} 存一列 {@code publishedAt == null} 的信，不碰 Kafka。</li>
  *   <li>{@code publishPending}：撈最多 50 筆未發送列 → 反序列化 → 送 Kafka → {@code markPublished()}。</li>
  * </ul>
  * 與整合層 {@code TradeSagaIntegrationTest#outbox_reachesKafkaTrail} 成對（同一 Case ID OUTBOX-001）。
- * 【技巧】
+ * <p>【技巧】
  * <ul>
  *   <li>{@code @Spy ObjectMapper}：用真的 Jackson 做序列化／反序列化（payload 是真 JSON），
  *       又能被 {@code @InjectMocks} 當依賴塞進建構子。</li>
@@ -37,9 +37,9 @@ import static org.mockito.Mockito.verify;
  *   <li>{@code @InjectMocks}：Mockito 找最多參數的建構子，依型別把上面的 mock／spy 傳進去，
  *       等同 {@code new OutboxPublisherService(outboxEventRepository, objectMapper, kafkaMessageSender)}。</li>
  * </ul>
- * 【概念】Outbox（發件匣）解決「DB 寫成功但 Kafka 送失敗」的雙寫不一致：業務交易只把信寫進本庫表，
- * 交易提交後再由排程 {@link OutboxRelayJob} 呼叫 {@code publishPending} 寄出。
- * 本測試沒有 Spring，所以 {@code @Transactional} 不生效，也沒有排程；直接呼叫方法觀察結果即可。
+ * <p>【概念】Outbox（發件匣）解決「DB 寫成功但 Kafka 送失敗」的雙寫不一致：業務交易只把信寫進本庫表，
+ * <br>交易提交後再由排程 {@link OutboxRelayJob} 呼叫 {@code publishPending} 寄出。
+ * <br>本測試沒有 Spring，所以 {@code @Transactional} 不生效，也沒有排程；直接呼叫方法觀察結果即可。
  */
 // 啟用 Mockito：處理 @Mock／@Spy／@InjectMocks，並在每個 Test 結束檢查是否有多餘的 stub（嚴格模式）
 @ExtendWith(MockitoExtension.class)

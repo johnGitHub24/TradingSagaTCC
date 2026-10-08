@@ -32,12 +32,12 @@ import static org.mockito.Mockito.when;
  * → 框線印到 Console                                  → 框線被 captureStdout 導進記憶體再比對
  * </pre>
  * <p>測試方法本身（{@code disabled_printsNothing}／{@code static_printsHome}）沒有人在程式裡呼叫：
- * 由 JUnit 5 掃描 {@code @Test} 後用反射執行；每個方法前會 new 一個新的測試實例並重新建立 {@code @Mock}。</p>
+ * <br>由 JUnit 5 掃描 {@code @Test} 後用反射執行；每個方法前會 new 一個新的測試實例並重新建立 {@code @Mock}。</p>
  *
  * <p>【技巧】{@code Strictness.LENIENT}：Mockito 預設 STRICT_STUBS 會在兩種情況讓測試失敗——
- * 寫了 {@code when} 卻沒被用到（UnnecessaryStubbing），或被測程式用「不同參數」呼叫已 stub 的方法
- * （PotentialStubbingProblem）。這裡 stub 了一大串設定值，放寬後，日後被測程式少讀某個設定
- * 或改了預設參數，未命中的呼叫只會回 null，不會讓整支測試因 stub 細節而爆掉。</p>
+ * <br>寫了 {@code when} 卻沒被用到（UnnecessaryStubbing），或被測程式用「不同參數」呼叫已 stub 的方法
+ * <br>（PotentialStubbingProblem）。這裡 stub 了一大串設定值，放寬後，日後被測程式少讀某個設定
+ * <br>或改了預設參數，未命中的呼叫只會回 null，不會讓整支測試因 stub 細節而爆掉。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)

@@ -14,14 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 【職責】訂單庫補償：把進行中的單標 FAILED、Saga 標 COMPENSATED。
- * 【技巧】終態冪等直接 return；合法中段才 {@code COMPENSATING → COMPENSATED}。
- * 【概念】補償不是 rollback 帳戶庫（帳戶由 TCC Cancel 自己還原）。
- * 【使用】由 {@code OrderSagaEventHandler} 在 FUNDS_FAILED／FUNDS_CANCELLED 時呼叫。
- * 【邊界】只寫訂單庫。
+ * <p>【技巧】終態冪等直接 return；合法中段才 {@code COMPENSATING → COMPENSATED}。
+ * <p>【概念】補償不是 rollback 帳戶庫（帳戶由 TCC Cancel 自己還原）。
+ * <p>【使用】由 {@code OrderSagaEventHandler} 在 FUNDS_FAILED／FUNDS_CANCELLED 時呼叫。
+ * <p>【邊界】只寫訂單庫。
  *
  * <p>【怎麼運作／注入】{@code @Service} + {@code implements CompensationAction} →
- * 登錄成補償 Bean；{@link com.trading.saga.messaging.OrderSagaEventHandler} 建構子寫介面即可拿到本類
- * （與 OutboxPublisherService 當 OutboxRelay 同一套路）。
+ * <br>登錄成補償 Bean；{@link com.trading.saga.messaging.OrderSagaEventHandler} 建構子寫介面即可拿到本類
+ * <br>（與 OutboxPublisherService 當 OutboxRelay 同一套路）。
  */
 @Service
 public class OrderMarkFailedAction implements CompensationAction {
@@ -32,7 +32,7 @@ public class OrderMarkFailedAction implements CompensationAction {
 
     /**
      * 【職責】注入訂單庫寫入埠（建構子注入）。
-     * 【使用】Spring 建構；單元測試 Mock 三個 Repository。
+     * <p>【使用】Spring 建構；單元測試 Mock 三個 Repository。
      */
     public OrderMarkFailedAction(SagaInstanceRepository sagaInstanceRepository,
                                  TradeOrderRepository orderRepository,
@@ -44,7 +44,7 @@ public class OrderMarkFailedAction implements CompensationAction {
 
     /**
      * 【職責】回傳步驟名稱（寫入 saga_steps）。
-     * 【使用】{@code SagaStep.of(sagaId, name(), "order FAILED")}；勿當業務分支條件。
+     * <p>【使用】{@code SagaStep.of(sagaId, name(), "order FAILED")}；勿當業務分支條件。
      */
     @Override
     public String name() {
@@ -53,9 +53,9 @@ public class OrderMarkFailedAction implements CompensationAction {
 
     /**
      * 【職責】將進行中的 Saga／訂單收成補償終態。
-     * 【技巧】已 COMPLETED／COMPENSATED／FAILED → 直接 return。
-     * 【概念】訂單 FAILED ≠ 帳戶一定失敗；帳戶可能已 Cancel 還原。
-     * 【使用】Case SAGA-002／TCC-002；前台應顯示 Saga COMPENSATED＋訂單 FAILED。
+     * <p>【技巧】已 COMPLETED／COMPENSATED／FAILED → 直接 return。
+     * <p>【概念】訂單 FAILED ≠ 帳戶一定失敗；帳戶可能已 Cancel 還原。
+     * <p>【使用】Case SAGA-002／TCC-002；前台應顯示 Saga COMPENSATED＋訂單 FAILED。
      * <pre>
      * compensationAction.compensate(sagaId);
      * // order.status = FAILED；saga.status = COMPENSATED

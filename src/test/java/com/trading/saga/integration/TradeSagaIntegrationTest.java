@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 【職責】HTTP＋雙 H2＋內嵌 Kafka 整合層；與單元層同一 Case ID。
- * 從 Controller 一路打到雙庫與 Kafka，驗證整條 Saga 的最終結果：
+ * <br>從 Controller 一路打到雙庫與 Kafka，驗證整條 Saga 的最終結果：
  * <ul>
  *   <li>ACCOUNT-001：{@code GET /api/v1/accounts/ACC-001} → 200，種子餘額。</li>
  *   <li>TRADE-001：{@code GET /api/v1/trades/missing-order} → 404。</li>
@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>TCC-001：{@code GET /api/v1/tcc/reservations/{sagaId}} → 三情境終態預留票 CONFIRMED／無票／CANCELLED；未知 sagaId → 200 exists=false。</li>
  *   <li>DASH-001：同埠靜態前台 index.html／dashboard.js／dashboard.spec.js → 200 且含 Dashboard 標記。</li>
  * </ul>
- * 【技巧】Request body 來自 {@code docs/test-data/}（EOS Fixture）；Awaitility 等終態。
+ * <p>【技巧】Request body 來自 {@code docs/test-data/}（EOS Fixture）；Awaitility 等終態。
  * <ul>
  *   <li>{@link SagaTestFixtures}：單元與整合層共用同一份 JSON，契約改動只改一處。</li>
  *   <li>{@link MockMvc}：在同一個 JVM 內直接呼叫 DispatcherServlet，不經真實網路，但 Controller、
@@ -51,12 +51,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>Awaitility {@code await().atMost(...).untilAsserted(...)}：反覆執行 lambda 內的斷言，
  *       直到通過或逾時；用來等非同步的 Kafka 流程，取代不可靠的 {@code Thread.sleep}。</li>
  * </ul>
- * 【概念】{@code @SpringBootTest} 會真的啟動整個 Spring 應用：讀 {@code application.yml}、建立雙 H2
- * （orderdb／accountdb）、Kafka listener、Outbox 排程。{@code POST /trades} 只回 202（已受理），
- * 之後的流程在背景執行緒進行：Outbox 排程把 {@code RESERVE_FUNDS} 送進 Kafka → 帳戶側 TCC Try →
- * 發 event → 訂單側推進（{@code CONFIRM_FUNDS} 或補償）……所以 HTTP 回來當下 Saga 多半仍是
- * {@code ACCOUNT_TRYING}，必須用 Awaitility 輪詢 {@code GET /sagas/{id}} 等到終態才能斷言。
- * 同一個測試類別的方法共用快取的 Spring Context（DB 與記憶體軌跡不會自動清空），因此：
+ * <p>【概念】{@code @SpringBootTest} 會真的啟動整個 Spring 應用：讀 {@code application.yml}、建立雙 H2
+ * <br>（orderdb／accountdb）、Kafka listener、Outbox 排程。{@code POST /trades} 只回 202（已受理），
+ * <br>之後的流程在背景執行緒進行：Outbox 排程把 {@code RESERVE_FUNDS} 送進 Kafka → 帳戶側 TCC Try →
+ * <br>發 event → 訂單側推進（{@code CONFIRM_FUNDS} 或補償）……所以 HTTP 回來當下 Saga 多半仍是
+ * <br>{@code ACCOUNT_TRYING}，必須用 Awaitility 輪詢 {@code GET /sagas/{id}} 等到終態才能斷言。
+ * <br>同一個測試類別的方法共用快取的 Spring Context（DB 與記憶體軌跡不會自動清空），因此：
  * <ul>
  *   <li>每個 Test 前都以 reset API 把帳戶還原成種子餘額。</li>
  *   <li>Kafka 軌跡斷言一律以 JsonPath 篩選本次的 sagaId（{@link #typesOf}），不會被前一個 Test 留下的訊息滿足。</li>
@@ -92,10 +92,10 @@ class TradeSagaIntegrationTest {
 
     /**
      * 【職責】每個 Test 前把種子帳戶 ACC-001 還原成 available=100000、frozen=0。
-     * 【技巧】直接打正式的 reset API（{@code POST /api/v1/accounts/ACC-001/reset}），並順便斷言回應，
-     * 確保還原真的成功後才進入各 Test。
-     * 【概念】Spring Context 在方法之間共用，前一個 Test 扣過的款會留在 accountdb；
-     * 不還原的話，SAGA-001 的「available 90000」等期望值會被前一個 Test 影響。
+     * <p>【技巧】直接打正式的 reset API（{@code POST /api/v1/accounts/ACC-001/reset}），並順便斷言回應，
+     * <br>確保還原真的成功後才進入各 Test。
+     * <p>【概念】Spring Context 在方法之間共用，前一個 Test 扣過的款會留在 accountdb；
+     * <br>不還原的話，SAGA-001 的「available 90000」等期望值會被前一個 Test 影響。
      */
     @BeforeEach
     void resetSeed() throws Exception {
@@ -280,7 +280,7 @@ class TradeSagaIntegrationTest {
 
     /**
      * DASH-001：Given 同埠靜態前台，When GET index.html／dashboard.js／test/dashboard.spec.js，
-     * Then 200 且含 Dashboard 標記（三條 lane、導航列、時間軸）與狀態推導函式；單元層為 dashboard.spec.js。
+     * <br>Then 200 且含 Dashboard 標記（三條 lane、導航列、時間軸）與狀態推導函式；單元層為 dashboard.spec.js。
      */
     @Test
     @DisplayName("DASH-001: static dashboard assets served with lane markers")
@@ -345,9 +345,9 @@ class TradeSagaIntegrationTest {
 
     /**
      * 【職責】組出「只取指定 sagaId 的軌跡 type」的 JsonPath。
-     * 【技巧】JsonPath 篩選語法 {@code $[?(@.sagaId == 'x')].type}：{@code ?()} 逐筆過濾陣列元素，{@code @} 代表當前元素；
-     *         結果仍是陣列，可直接搭配 {@code hasItem(...)}。
-     * 【概念】EventLogService 是全應用共用的記憶體軌跡，跨 Test 不會清空；以 sagaId 篩選才能確定訊息屬於本次下單。
+     * <p>【技巧】JsonPath 篩選語法 {@code $[?(@.sagaId == 'x')].type}：{@code ?()} 逐筆過濾陣列元素，{@code @} 代表當前元素；
+     * <br>結果仍是陣列，可直接搭配 {@code hasItem(...)}。
+     * <p>【概念】EventLogService 是全應用共用的記憶體軌跡，跨 Test 不會清空；以 sagaId 篩選才能確定訊息屬於本次下單。
      *
      * @param sagaId 本次下單取得的 sagaId（UUID，不含單引號，可安全嵌入運算式）
      * @return JsonPath 運算式
@@ -358,9 +358,9 @@ class TradeSagaIntegrationTest {
 
     /**
      * 【職責】以指定 Case ID 的 fixture 呼叫 {@code POST /api/v1/trades}，斷言 202 並回傳 sagaId。
-     * 【技巧】{@code andReturn()} 取得 {@link MvcResult}，再用 Jackson 讀回應 JSON 的 {@code sagaId}，
-     * 供後續 {@code GET /api/v1/sagas/{sagaId}} 輪詢。
-     * 【概念】202 Accepted＝「已受理、開始編排」，不等於扣款完成；回應裡的訂單多為 PENDING。
+     * <p>【技巧】{@code andReturn()} 取得 {@link MvcResult}，再用 Jackson 讀回應 JSON 的 {@code sagaId}，
+     * <br>供後續 {@code GET /api/v1/sagas/{sagaId}} 輪詢。
+     * <p>【概念】202 Accepted＝「已受理、開始編排」，不等於扣款完成；回應裡的訂單多為 PENDING。
      *
      * @param caseId {@code docs/test-data/trade/} 下不含副檔名的檔名（如 SAGA-001-SUCCESS）
      * @return 本次下單產生的 sagaId（隨機 UUID）

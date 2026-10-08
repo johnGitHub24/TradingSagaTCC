@@ -17,9 +17,9 @@ import java.util.List;
 
 /**
  * 【職責】應用就緒後於 Console 印出常用 URL，並對 HTTP 入口探測 UP／DOWN。
- * 【技巧】聽 {@link ApplicationReadyEvent}；UTF-8 {@link PrintStream}；雙庫 JDBC 都印出。
- * 【概念】開發便利，不是 Gate（Gate 仍是 {@code scripts/check.ps1}）。
- * 【邊界】不啟動 Docker／Kafka 外接。
+ * <p>【技巧】聽 {@link ApplicationReadyEvent}；UTF-8 {@link PrintStream}；雙庫 JDBC 都印出。
+ * <p>【概念】開發便利，不是 Gate（Gate 仍是 {@code scripts/check.ps1}）。
+ * <p>【邊界】不啟動 Docker／Kafka 外接。
  *
  * <p>【綁定的 property（皆在 {@code application.yml} 的 {@code startup.info.*}）】
  * <ul>
@@ -34,8 +34,8 @@ import java.util.List;
  * </ul>
  *
  * <p>【為什麼是 ApplicationReadyEvent】它在內嵌 Tomcat 已開埠、{@code CommandLineRunner}
- * （例如 {@link AccountDataSeeder}）跑完後才發出；此時自我探測才有意義，
- * 若改聽 {@code ContextRefreshedEvent}，埠可能尚未開，探測會全部 DOWN。
+ * <br>（例如 {@link AccountDataSeeder}）跑完後才發出；此時自我探測才有意義，
+ * <br>若改聽 {@code ContextRefreshedEvent}，埠可能尚未開，探測會全部 DOWN。
  */
 @Component
 public class StartupInfoLogger implements ApplicationListener<ApplicationReadyEvent> {
@@ -44,9 +44,9 @@ public class StartupInfoLogger implements ApplicationListener<ApplicationReadyEv
 
     /**
      * 【職責】讀 {@code startup.info.*} 開關，印出後端工具、雙庫 JDBC、前台首頁的連結框線。
-     * 【技巧】所有值都從 {@link Environment} 讀並帶預設值，yml 缺鍵也不會 NPE；
-     *         最後再補一行 {@code log.info}，讓只看 log 檔（不看 Console）的人也知道已就緒。
-     * 【概念】框線用 {@code System.out} 而非 logger：logger 會加時間／等級前綴，破壞對齊。
+     * <p>【技巧】所有值都從 {@link Environment} 讀並帶預設值，yml 缺鍵也不會 NPE；
+     * <br>最後再補一行 {@code log.info}，讓只看 log 檔（不看 Console）的人也知道已就緒。
+     * <p>【概念】框線用 {@code System.out} 而非 logger：logger 會加時間／等級前綴，破壞對齊。
      *
      * @param event 就緒事件（從中取得 ApplicationContext 的 Environment）
      */
@@ -106,7 +106,7 @@ public class StartupInfoLogger implements ApplicationListener<ApplicationReadyEv
 
     /**
      * 印一行「標籤＋URL」，需要時在尾端附 {@code [UP]}／{@code [DOWN]}。
-     * 只探測 {@code http} 開頭的字串，非 HTTP 內容（例如 JDBC URL）不會誤發請求。
+     * <br>只探測 {@code http} 開頭的字串，非 HTTP 內容（例如 JDBC URL）不會誤發請求。
      */
     private static void link(PrintStream out, boolean probe, String label, String url) {
         String mark = "";
@@ -118,7 +118,7 @@ public class StartupInfoLogger implements ApplicationListener<ApplicationReadyEv
 
     /**
      * 對自身埠發一次 GET，判斷端點是否有回應。
-     * 例外（連不上、逾時）一律視為 DOWN，不往外拋：探測失敗不該讓啟動流程中斷。
+     * <br>例外（連不上、逾時）一律視為 DOWN，不往外拋：探測失敗不該讓啟動流程中斷。
      */
     private static boolean isUp(String url) {
         HttpURLConnection conn = null;
@@ -144,7 +144,7 @@ public class StartupInfoLogger implements ApplicationListener<ApplicationReadyEv
 
     /**
      * 以 UTF-8 包一層 {@code System.out}。
-     * Windows 主控台預設 code page（如 cp950）會把框線字元與中文印成亂碼；autoFlush=true 確保立即輸出。
+     * <br>Windows 主控台預設 code page（如 cp950）會把框線字元與中文印成亂碼；autoFlush=true 確保立即輸出。
      */
     private static PrintStream utf8Out() {
         return new PrintStream(System.out, true, StandardCharsets.UTF_8);
@@ -152,10 +152,10 @@ public class StartupInfoLogger implements ApplicationListener<ApplicationReadyEv
 
     /**
      * 【職責】解析 {@code startup.info.extra-paths}，回傳一律以 {@code /} 開頭的路徑清單。
-     * 【技巧】同時支援兩種寫法：YAML 清單（Spring 攤平成 {@code extra-paths[0]}、{@code [1]}…）
-     *         與單一逗號分隔字串；先試 indexed，沒有才退回逗號字串。
-     * 【概念】保留給測試／擴充 indexed 路徑解析（與公版 StartupInfoLogger 對齊）；
-     *         本專案 {@link #onApplicationEvent} 目前未呼叫，yml 也未設定此鍵。
+     * <p>【技巧】同時支援兩種寫法：YAML 清單（Spring 攤平成 {@code extra-paths[0]}、{@code [1]}…）
+     * <br>與單一逗號分隔字串；先試 indexed，沒有才退回逗號字串。
+     * <p>【概念】保留給測試／擴充 indexed 路徑解析（與公版 StartupInfoLogger 對齊）；
+     * <br>本專案 {@link #onApplicationEvent} 目前未呼叫，yml 也未設定此鍵。
      *
      * @param env Spring Environment
      * @return 額外路徑（未設定時為空清單，永不為 null）

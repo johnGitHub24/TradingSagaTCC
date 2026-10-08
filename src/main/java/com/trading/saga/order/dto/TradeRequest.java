@@ -10,11 +10,11 @@ import java.math.BigDecimal;
 
 /**
  * 【職責】下單請求（{@code POST /api/v1/trades} 的 body）。forceFail 僅教學用，用來走 TCC Cancel／Saga 補償。
- * 【技巧】Java record＋Bean Validation 註記放在 component 上；{@code TradeController.place} 標 {@code @Valid}，
- * 驗證失敗由 {@code GlobalExceptionHandler} 轉 422＋fieldErrors，根本進不到 {@code SagaOrchestrator}。
- * 【概念】驗證只擋「格式」；帳戶是否存在由 {@code AccountLookup.requireExists} 檢查（不存在→404），
- * 餘額夠不夠則要等帳戶側 TCC Try 才知道（不足→Saga 補償，HTTP 仍是 202）。
- * 【邊界】side 只驗 BUY／SELL 字面；本版 TCC 不論方向都凍結 quantity×price 的現金。
+ * <p>【技巧】Java record＋Bean Validation 註記放在 component 上；{@code TradeController.place} 標 {@code @Valid}，
+ * <br>驗證失敗由 {@code GlobalExceptionHandler} 轉 422＋fieldErrors，根本進不到 {@code SagaOrchestrator}。
+ * <p>【概念】驗證只擋「格式」；帳戶是否存在由 {@code AccountLookup.requireExists} 檢查（不存在→404），
+ * <br>餘額夠不夠則要等帳戶側 TCC Try 才知道（不足→Saga 補償，HTTP 仍是 202）。
+ * <p>【邊界】side 只驗 BUY／SELL 字面；本版 TCC 不論方向都凍結 quantity×price 的現金。
  *
  * @param accountId 下單帳戶代號（Demo 種子為 {@code ACC-001}）；不可空白
  * @param symbol    商品代號（如 BTCUSDT），最長 32，對齊 {@code trade_orders.symbol} 欄寬
@@ -33,9 +33,9 @@ public record TradeRequest(
 ) {
     /**
      * 【職責】把可為 null 的 {@code Boolean forceFail} 收斂成 primitive boolean。
-     * 【技巧】{@code Boolean.TRUE.equals(x)}：x 為 null 或 false 都回 false，避免自動拆箱 NPE。
-     * 【概念】component 宣告成包裝型別 {@code Boolean}，前端不傳此欄位時 JSON 才能合法反序列化為 null。
-     * 【使用】{@code SagaOrchestrator.start} 寫入訂單與 RESERVE_FUNDS 命令時呼叫。
+     * <p>【技巧】{@code Boolean.TRUE.equals(x)}：x 為 null 或 false 都回 false，避免自動拆箱 NPE。
+     * <p>【概念】component 宣告成包裝型別 {@code Boolean}，前端不傳此欄位時 JSON 才能合法反序列化為 null。
+     * <p>【使用】{@code SagaOrchestrator.start} 寫入訂單與 RESERVE_FUNDS 命令時呼叫。
      *
      * @return 是否走故意失敗路徑（null 一律視為 false）
      */

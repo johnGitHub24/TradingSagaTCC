@@ -2,8 +2,8 @@ package com.trading.saga.account.domain;
 
 /**
  * 【職責】單筆 TCC 預留票（{@code tcc_reservations}）的資金狀態。
- * 【概念】TRYING＝已凍結未確認；CONFIRMED＝已扣款；CANCELLED＝已退回。
- * 只記「錢的狀況」，不記流程；「現在在等誰」是 Saga 的事（{@code SagaStatus}，在訂單庫）。
+ * <p>【概念】TRYING＝已凍結未確認；CONFIRMED＝已扣款；CANCELLED＝已退回。
+ * <br>只記「錢的狀況」，不記流程；「現在在等誰」是 Saga 的事（{@code SagaStatus}，在訂單庫）。
  *
  * <p>【狀態圖】
  * <pre>
@@ -20,7 +20,7 @@ package com.trading.saga.account.domain;
  * （無票）Try 失敗  → 發 FUNDS_FAILED    → Saga COMPENSATED＋訂單 FAILED
  * </pre>
  * CANCELLED（單筆錢已退）≠ Saga COMPENSATED（整個流程失敗已收尾）。
- * 完整對照見 {@code docs/狀態對照-Saga-TCC-訂單.md}。
+ * <br>完整對照見 {@code docs/狀態對照-Saga-TCC-訂單.md}。
  */
 public enum TccState {
 

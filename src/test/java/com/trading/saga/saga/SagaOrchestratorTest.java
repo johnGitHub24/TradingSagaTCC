@@ -30,7 +30,7 @@ import static org.mockito.Mockito.verify;
 
 /**
  * 【職責】{@link SagaOrchestrator} 單元層：SAGA-001／OUTBOX-001 同一契約（寫 Outbox RESERVE_FUNDS）。
- * 【技巧】Request 來自 {@code docs/test-data/trade/SAGA-001-SUCCESS.json}。
+ * <p>【技巧】Request 來自 {@code docs/test-data/trade/SAGA-001-SUCCESS.json}。
  */
 // 啟用 Mockito：自動建立下方 @Mock 欄位，並在每個 Test 結束檢查是否有多餘的 stub（嚴格模式）
 @ExtendWith(MockitoExtension.class)
@@ -59,20 +59,20 @@ class SagaOrchestratorTest {
 
     /**
      * 【職責】每個 Test 前以 mock 依賴手動組裝 {@link SagaOrchestrator}，並讓兩個 Repository 的
-     * {@code save} 行為貼近真實 JPA（存什麼就回傳什麼）。
-     * 【技巧】{@code given(...).willAnswer(inv -> inv.getArgument(0))}：
+     * <br>{@code save} 行為貼近真實 JPA（存什麼就回傳什麼）。
+     * <p>【技巧】{@code given(...).willAnswer(inv -> inv.getArgument(0))}：
      * <ul>
      *   <li>{@code given(...)}：BDDMockito 寫法，等同 {@code when(...)}，語意為「在這個前提下」。</li>
      *   <li>{@code any(X.class)}：參數比對器，不論傳入哪一個 X 實例都符合此 stub。</li>
      *   <li>{@code willAnswer(...)}：非固定回傳值，而是每次呼叫時才執行 lambda 計算結果。</li>
      *   <li>{@code inv}：{@code InvocationOnMock}，代表本次呼叫；{@code getArgument(0)} 取第 1 個參數。</li>
      * </ul>
-     * 【概念】{@code @Mock} 未設定的方法對物件型別一律回傳 {@code null}；若被測程式改寫成
-     * {@code order = orderRepository.save(order)} 便會 NPE。實體是在 {@code start()} 內部才 new 出來，
-     * 測試拿不到參考，無法用 {@code willReturn(固定物件)}，故以「回傳傳入參數」保證同一實例，
-     * 後續 {@code ArgumentCaptor} 檢查到的狀態即為被測程式實際寫入的值。
-     * 在 {@code MockitoExtension} 嚴格模式下，只要 {@code save} 有被呼叫即視為已使用，
-     * 即使回傳值未被接收也不會拋 {@code UnnecessaryStubbingException}。
+     * <p>【概念】{@code @Mock} 未設定的方法對物件型別一律回傳 {@code null}；若被測程式改寫成
+     * <br>{@code order = orderRepository.save(order)} 便會 NPE。實體是在 {@code start()} 內部才 new 出來，
+     * <br>測試拿不到參考，無法用 {@code willReturn(固定物件)}，故以「回傳傳入參數」保證同一實例，
+     * <br>後續 {@code ArgumentCaptor} 檢查到的狀態即為被測程式實際寫入的值。
+     * <br>在 {@code MockitoExtension} 嚴格模式下，只要 {@code save} 有被呼叫即視為已使用，
+     * <br>即使回傳值未被接收也不會拋 {@code UnnecessaryStubbingException}。
      */
     @BeforeEach
     void setUp() {

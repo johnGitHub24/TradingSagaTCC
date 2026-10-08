@@ -15,15 +15,15 @@ import java.time.Instant;
 
 /**
  * 【職責】訂單庫（orderdb）{@code trade_orders} 的交易單；金額在下單當下算死，後續只改 status。
- * 【技巧】私有建構子＋靜態工廠 {@link #pending}：外部無法 new 出「非 PENDING」或「amount 與 qty×price 不符」的訂單；
- * 狀態只能經 {@link #markFilled}／{@link #markFailed} 改變，沒有 setter。
- * {@code @NoArgsConstructor} 只為滿足 JPA 反射建立實體，業務程式不應使用。
- * 【概念】PENDING 表示 Saga 進行中；FILLED／FAILED 是終態。帳戶餘額不在這張表（在 accountdb {@code accounts}），
- * 訂單側只靠 Kafka 事件得知扣款結果。訂單狀態是「給使用者看的結果」，流程細節看 {@link SagaInstance}。
- * 【使用】建立：{@code SagaOrchestrator.start}；收尾：{@code OrderSagaEventHandler.onConfirmed}（成功）、
- * {@code OrderMarkFailedAction.compensate}（失敗）；查詢投影：{@link com.trading.saga.order.dto.TradeResponse#from}。
- * 【邊界】不檢查狀態轉換合法性（終態冪等由呼叫端先看 Saga {@code isTerminal()} 把關）；
- * 本表無 {@code @Version}，併發保護靠「同一 sagaId 的 Kafka 訊息同分區依序消費」。
+ * <p>【技巧】私有建構子＋靜態工廠 {@link #pending}：外部無法 new 出「非 PENDING」或「amount 與 qty×price 不符」的訂單；
+ * <br>狀態只能經 {@link #markFilled}／{@link #markFailed} 改變，沒有 setter。
+ * <br>{@code @NoArgsConstructor} 只為滿足 JPA 反射建立實體，業務程式不應使用。
+ * <p>【概念】PENDING 表示 Saga 進行中；FILLED／FAILED 是終態。帳戶餘額不在這張表（在 accountdb {@code accounts}），
+ * <br>訂單側只靠 Kafka 事件得知扣款結果。訂單狀態是「給使用者看的結果」，流程細節看 {@link SagaInstance}。
+ * <p>【使用】建立：{@code SagaOrchestrator.start}；收尾：{@code OrderSagaEventHandler.onConfirmed}（成功）、
+ * <br>{@code OrderMarkFailedAction.compensate}（失敗）；查詢投影：{@link com.trading.saga.order.dto.TradeResponse#from}。
+ * <p>【邊界】不檢查狀態轉換合法性（終態冪等由呼叫端先看 Saga {@code isTerminal()} 把關）；
+ * <br>本表無 {@code @Version}，併發保護靠「同一 sagaId 的 Kafka 訊息同分區依序消費」。
  */
 @Entity
 @Table(name = "trade_orders")
@@ -33,8 +33,8 @@ public class TradeOrder {
 
     /**
      * 金額小數位，與 {@code amount} 欄位 scale 4 一致。
-     * quantity × price 的小數位常超過 4 位（如 0.3333 × 0.3333 有 8 位）；若不在記憶體先定案，
-     * 202 回應與 RESERVE_FUNDS 命令帶的是未捨入值，落庫後卻是 DB 捨入的 4 位值，兩邊對不上。
+     * <br>quantity × price 的小數位常超過 4 位（如 0.3333 × 0.3333 有 8 位）；若不在記憶體先定案，
+     * <br>202 回應與 RESERVE_FUNDS 命令帶的是未捨入值，落庫後卻是 DB 捨入的 4 位值，兩邊對不上。
      */
     public static final int AMOUNT_SCALE = 4;
 
@@ -68,7 +68,7 @@ public class TradeOrder {
 
     /**
      * 名目金額＝quantity × price，以 HALF_UP 捨入到 {@link #AMOUNT_SCALE} 位，建構時算定並落庫；
-     * 之後 RESERVE／CONFIRM 命令都帶這個值，確保 Try 與 Confirm 金額一致，也與 DB 存的值相同。
+     * <br>之後 RESERVE／CONFIRM 命令都帶這個值，確保 Try 與 Confirm 金額一致，也與 DB 存的值相同。
      */
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
@@ -103,9 +103,9 @@ public class TradeOrder {
 
     /**
      * 【職責】建立 PENDING 訂單（尚未 persist）。
-     * 【技巧】靜態工廠取代 public 建構子：名稱直接說明「建出來就是 PENDING」，並集中算 amount。
-     * 【概念】此刻帳戶還沒動；HTTP 回 202 時訂單停在 PENDING，結果要等 Kafka／TCC 回來。
-     * 【使用】僅 {@code SagaOrchestrator.start} 呼叫；amount＝quantity×price，HALF_UP 捨入到 4 位小數。
+     * <p>【技巧】靜態工廠取代 public 建構子：名稱直接說明「建出來就是 PENDING」，並集中算 amount。
+     * <p>【概念】此刻帳戶還沒動；HTTP 回 202 時訂單停在 PENDING，結果要等 Kafka／TCC 回來。
+     * <p>【使用】僅 {@code SagaOrchestrator.start} 呼叫；amount＝quantity×price，HALF_UP 捨入到 4 位小數。
      * <pre>
      * TradeOrder.pending(orderId, sagaId, "ACC-001", "BTCUSDT", "BUY", qty, price, false);
      * </pre>
@@ -127,8 +127,8 @@ public class TradeOrder {
 
     /**
      * 【職責】Saga 成功收尾：PENDING → FILLED。
-     * 【概念】此時帳戶側預留票已 CONFIRMED（錢已扣）；同一 TX 內 Saga 也轉 COMPLETED。
-     * 【使用】僅 {@code OrderSagaEventHandler.onConfirmed}；勿在補償路徑呼叫。
+     * <p>【概念】此時帳戶側預留票已 CONFIRMED（錢已扣）；同一 TX 內 Saga 也轉 COMPLETED。
+     * <p>【使用】僅 {@code OrderSagaEventHandler.onConfirmed}；勿在補償路徑呼叫。
      */
     public void markFilled() {
         this.status = OrderStatus.FILLED;
@@ -136,8 +136,8 @@ public class TradeOrder {
 
     /**
      * 【職責】補償：標失敗（不碰帳戶庫）。
-     * 【概念】FAILED 是「失敗路徑已正確收尾」，不代表系統出錯；錢是否曾凍結要看預留票。
-     * 【使用】僅 {@code OrderMarkFailedAction.compensate}；帳戶還原靠 TCC Cancel。
+     * <p>【概念】FAILED 是「失敗路徑已正確收尾」，不代表系統出錯；錢是否曾凍結要看預留票。
+     * <p>【使用】僅 {@code OrderMarkFailedAction.compensate}；帳戶還原靠 TCC Cancel。
      */
     public void markFailed() {
         this.status = OrderStatus.FAILED;

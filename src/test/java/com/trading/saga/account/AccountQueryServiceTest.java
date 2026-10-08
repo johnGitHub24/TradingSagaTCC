@@ -29,7 +29,7 @@ class AccountQueryServiceTest {
 
     /**
      * 【概念】假的 repository：Mockito 依介面產生替身，<b>沒有 H2、沒有資料表、不會發 SQL</b>。
-     * 每個方法預設回 null／空值，要回什麼由各測試用 {@code given(...).willReturn(...)} 事先寫劇本。
+     * <br>每個方法預設回 null／空值，要回什麼由各測試用 {@code given(...).willReturn(...)} 事先寫劇本。
      */
     @Mock
     private AccountRepository accountRepository;
@@ -40,16 +40,16 @@ class AccountQueryServiceTest {
 
     /**
      * 【概念】真的 {@link AccountQueryService}：Mockito 呼叫它的建構子，把上面兩個假 repository 塞進去
-     * （等同手寫 {@code new AccountQueryService(accountRepository, reservationRepository)}）；這裡沒有 Spring 容器參與。
+     * <br>（等同手寫 {@code new AccountQueryService(accountRepository, reservationRepository)}）；這裡沒有 Spring 容器參與。
      */
     @InjectMocks
     private AccountQueryService queryService;
 
     /**
      * 【職責】ACCOUNT-001 正向：查到帳戶時，Service 能正確轉成 {@code AccountResponse}（含 total 計算）。
-     * 【概念】資料<b>不是</b>從資料表來：是測試自己 new 一個 Account，交給假 repository 當回傳值。
-     * 正式環境的 ACC-001 由 {@code AccountDataSeeder} 在 App 啟動時 {@code save} 進 accountdb；
-     * 走真資料庫的版本在 {@code TradeSagaIntegrationTest}（同一 Case ID）。
+     * <p>【概念】資料<b>不是</b>從資料表來：是測試自己 new 一個 Account，交給假 repository 當回傳值。
+     * <br>正式環境的 ACC-001 由 {@code AccountDataSeeder} 在 App 啟動時 {@code save} 進 accountdb；
+     * <br>走真資料庫的版本在 {@code TradeSagaIntegrationTest}（同一 Case ID）。
      */
     @Test
     @DisplayName("ACCOUNT-001: get ACC-001 returns seed balances")
@@ -80,7 +80,7 @@ class AccountQueryServiceTest {
 
     /**
      * 【職責】ACCOUNT-001 負向：查不到帳戶時要丟 {@link ResourceNotFoundException}
-     * （由 {@code GlobalExceptionHandler} 轉成 HTTP 404）。
+     * <br>（由 {@code GlobalExceptionHandler} 轉成 HTTP 404）。
      */
     @Test
     @DisplayName("ACCOUNT-001 error: missing account → ResourceNotFoundException")

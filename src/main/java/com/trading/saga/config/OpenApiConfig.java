@@ -7,11 +7,11 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * 【職責】OpenAPI 文件中繼資料。
- * 【技巧】提供一個 {@link OpenAPI} Bean，springdoc（{@code springdoc-openapi-starter-webmvc-ui}）
- *         會以它為底，再掃描各 {@code @RestController} 補上路徑與 schema。
- * 【概念】這裡只放標題／說明／版本；端點清單由 springdoc 自動產生，不必手寫。
- *         Swagger UI 路徑由 yml {@code springdoc.swagger-ui.path} 決定（{@code /swagger-ui.html}）。
- * 【邊界】無條件生效、不綁自訂 property；API 契約權威仍是專案根目錄 {@code API規格書.md}。
+ * <p>【技巧】提供一個 {@link OpenAPI} Bean，springdoc（{@code springdoc-openapi-starter-webmvc-ui}）
+ * <br>會以它為底，再掃描各 {@code @RestController} 補上路徑與 schema。
+ * <p>【概念】這裡只放標題／說明／版本；端點清單由 springdoc 自動產生，不必手寫。
+ * <br>Swagger UI 路徑由 yml {@code springdoc.swagger-ui.path} 決定（{@code /swagger-ui.html}）。
+ * <p>【邊界】無條件生效、不綁自訂 property；API 契約權威仍是專案根目錄 {@code API規格書.md}。
  */
 @Configuration
 public class OpenApiConfig {

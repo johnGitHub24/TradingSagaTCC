@@ -11,13 +11,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 【職責】帳戶領域：TCC Try／Confirm／Cancel 的資金不變式（不啟動 Spring）。
- * 覆蓋 {@link Account} 領域層；對應 Case SAGA-001（Try→Confirm）、SAGA-002（餘額不足）、TCC-002（Try→Cancel）。
- * 【技巧】純物件斷言；與整合層 SAGA-001／SAGA-002／TCC-002 同一資金語意。
- * 用 {@code @Nested} 依 Case 分組；BigDecimal 一律以 {@code isEqualByComparingTo} 比數值；
- * 例外以 {@code assertThatThrownBy} 斷言型別，並在丟出後再檢查餘額未被動到。
- * 【概念】Try 把 available 轉入 frozen；Confirm 吃掉 frozen；Cancel 把 frozen 還回 available。
- * 名義總額 {@code total() = available + frozen}：Try／Cancel 只是「錢換口袋」所以 total 不變，
- * 只有 Confirm 才真正扣款讓 total 下降。這就是 TCC 的資金不變式，測試逐步驗證它。
+ * <br>覆蓋 {@link Account} 領域層；對應 Case SAGA-001（Try→Confirm）、SAGA-002（餘額不足）、TCC-002（Try→Cancel）。
+ * <p>【技巧】純物件斷言；與整合層 SAGA-001／SAGA-002／TCC-002 同一資金語意。
+ * <br>用 {@code @Nested} 依 Case 分組；BigDecimal 一律以 {@code isEqualByComparingTo} 比數值；
+ * <br>例外以 {@code assertThatThrownBy} 斷言型別，並在丟出後再檢查餘額未被動到。
+ * <p>【概念】Try 把 available 轉入 frozen；Confirm 吃掉 frozen；Cancel 把 frozen 還回 available。
+ * <br>名義總額 {@code total() = available + frozen}：Try／Cancel 只是「錢換口袋」所以 total 不變，
+ * <br>只有 Confirm 才真正扣款讓 total 下降。這就是 TCC 的資金不變式，測試逐步驗證它。
  */
 // 測試報告／IDE 上顯示的名稱
 @DisplayName("Account domain (TCC money invariants)")
@@ -25,9 +25,9 @@ class AccountTest {
 
     /**
      * 【職責】建立與正式種子相同的帳戶：ACC-001、available 100000、frozen 0。
-     * 【技巧】每個 Test 呼叫一次取得全新實例，避免測試之間共用可變狀態。
-     * 【概念】數值與 {@code AccountQueryService.SEED_AVAILABLE}、
-     * {@code docs/test-data/account/ACCOUNT-001-SEED.json} 一致，讓單元層與整合層預期值同源。
+     * <p>【技巧】每個 Test 呼叫一次取得全新實例，避免測試之間共用可變狀態。
+     * <p>【概念】數值與 {@code AccountQueryService.SEED_AVAILABLE}、
+     * <br>{@code docs/test-data/account/ACCOUNT-001-SEED.json} 一致，讓單元層與整合層預期值同源。
      *
      * @return 尚未持久化的種子帳戶
      */
@@ -52,7 +52,7 @@ class AccountTest {
 
         /**
          * SAGA-001：Given 種子 100000，When Try 10000 再 Confirm 10000，
-         * Then available 90000、frozen 0、total 90000（真正扣款）。
+         * <br>Then available 90000、frozen 0、total 90000（真正扣款）。
          */
         @Test
         @DisplayName("SAGA-001: tryReserve 10000 then confirm → available 90000, frozen 0")
@@ -95,7 +95,7 @@ class AccountTest {
 
         /**
          * SAGA-002：Given 種子 100000，When Try 999999，
-         * Then 丟 {@link InsufficientFundsException} 且 available／frozen 完全不變。
+         * <br>Then 丟 {@link InsufficientFundsException} 且 available／frozen 完全不變。
          */
         @Test
         @DisplayName("SAGA-002: tryReserve above available → InsufficientFundsException, balances unchanged")
@@ -127,7 +127,7 @@ class AccountTest {
 
         /**
          * TCC-002：Given 種子 100000，When Try 10000 再 Cancel 10000，
-         * Then available 還原 100000、frozen 0、total 100000。
+         * <br>Then available 還原 100000、frozen 0、total 100000。
          */
         @Test
         @DisplayName("TCC-002: tryReserve then cancel → available restored to 100000")

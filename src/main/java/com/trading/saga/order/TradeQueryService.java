@@ -13,8 +13,8 @@ import java.util.List;
 
 /**
  * 【職責】訂單／Saga 唯讀查詢（訂單庫）。
- * 【使用】由 {@link TradeController}／{@link DemoController} 呼叫；單元測試可 Mock Repository。
- * 【邊界】不啟動 Saga、不寫 Outbox。
+ * <p>【使用】由 {@link TradeController}／{@link DemoController} 呼叫；單元測試可 Mock Repository。
+ * <p>【邊界】不啟動 Saga、不寫 Outbox。
  *
  * <p>【怎麼運作】{@code @Service} + 建構子注入三個 Repository（Spring Data 自動產生實作 Bean）。
  */
@@ -38,7 +38,7 @@ public class TradeQueryService {
 
     /**
      * 【職責】列出訂單（新到舊）。
-     * 【使用】Demo 面板「訂單」表；{@code GET /api/v1/trades}。
+     * <p>【使用】Demo 面板「訂單」表；{@code GET /api/v1/trades}。
      *
      * @return 訂單 DTO 列表
      */
@@ -51,7 +51,7 @@ public class TradeQueryService {
 
     /**
      * 【職責】依 id 取單筆；不存在拋 404。
-     * 【使用】Case TRADE-001。
+     * <p>【使用】Case TRADE-001。
      * <pre>
      * tradeQueryService.getOrder("missing-order"); // → ResourceNotFoundException
      * </pre>
@@ -68,7 +68,7 @@ public class TradeQueryService {
 
     /**
      * 【職責】取 Saga 狀態＋步驟時間軸。
-     * 【使用】前台輪詢終態；{@code GET /api/v1/sagas/{sagaId}}。
+     * <p>【使用】前台輪詢終態；{@code GET /api/v1/sagas/{sagaId}}。
      *
      * @param sagaId 流程 id
      * @return 含 steps

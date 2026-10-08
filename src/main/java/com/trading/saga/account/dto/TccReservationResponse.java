@@ -8,10 +8,10 @@ import java.time.Instant;
 
 /**
  * 【職責】TCC 預留票對外 DTO（{@code GET /api/v1/tcc/reservations/{sagaId}} 的回應），供前台 Dashboard 畫 TCC 狀態機。
- * 【技巧】兩個靜態工廠：{@link #from} 投影既有票；{@link #none} 表示「查無票」，以 {@code exists=false} 回 200 而非 404。
- * 【概念】「無票」是合法的業務狀態，不是錯誤：Try 尚未執行，或 Try 失敗（餘額不足）根本不寫票。
- * 前台輪詢時若用 404 表達，瀏覽器 Console 會被紅字洗版，也會和「路徑打錯」混淆。
- * 【邊界】只讀帳戶庫；訂單側程式不可依賴本 DTO（兩庫只靠 Kafka 溝通，本端點僅服務人眼觀察）。
+ * <p>【技巧】兩個靜態工廠：{@link #from} 投影既有票；{@link #none} 表示「查無票」，以 {@code exists=false} 回 200 而非 404。
+ * <p>【概念】「無票」是合法的業務狀態，不是錯誤：Try 尚未執行，或 Try 失敗（餘額不足）根本不寫票。
+ * <br>前台輪詢時若用 404 表達，瀏覽器 Console 會被紅字洗版，也會和「路徑打錯」混淆。
+ * <p>【邊界】只讀帳戶庫；訂單側程式不可依賴本 DTO（兩庫只靠 Kafka 溝通，本端點僅服務人眼觀察）。
  *
  * @param sagaId    流程 id（預留票主鍵）
  * @param exists    是否已有預留票；false 時其餘欄位為 null

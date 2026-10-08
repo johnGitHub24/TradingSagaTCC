@@ -17,9 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 【職責】訂單側消費帳戶事件：下 Confirm 命令、完成訂單、或觸發補償。
- * 【技巧】終態直接略過，避免 Kafka 重送把已完成 Saga 再轉一次。
- * 【概念】編排者只根據事件推進自己的庫（orderdb），不直接改帳戶庫。
- * 【使用】由 {@link SagaKafkaListeners#onEvent} 轉送進來。
+ * <p>【技巧】終態直接略過，避免 Kafka 重送把已完成 Saga 再轉一次。
+ * <p>【概念】編排者只根據事件推進自己的庫（orderdb），不直接改帳戶庫。
+ * <p>【使用】由 {@link SagaKafkaListeners#onEvent} 轉送進來。
  *
  * <p>【怎麼運作】從頭到腳：
  * <ol>
@@ -39,8 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
  * </ol>
  *
  * <p>【對照】和 {@link OutboxRelayJob} 一樣都是建構子注入；
- * Job 只要一個 {@link com.trading.saga.expansion.OutboxRelay}，
- * 本類要一組「編排推進」依賴，多一個 {@code @Value} 設定字串。
+ * <br>Job 只要一個 {@link com.trading.saga.expansion.OutboxRelay}，
+ * <br>本類要一組「編排推進」依賴，多一個 {@code @Value} 設定字串。
  */
 @Service
 public class OrderSagaEventHandler implements DomainEventConsumer {
@@ -57,8 +57,8 @@ public class OrderSagaEventHandler implements DomainEventConsumer {
 
     /**
      * 【職責】組裝編排推進所需依賴（建構子注入，見類別上方【怎麼運作】第 2 步）。
-     * 【技巧】前五個是 Spring Bean；最後一個用 {@code @Value} 從設定檔注入字串（不是 Bean）。
-     * 【概念】Spring 看到唯一建構子 → 自動找齊參數再呼叫；你不用自己 new。
+     * <p>【技巧】前五個是 Spring Bean；最後一個用 {@code @Value} 從設定檔注入字串（不是 Bean）。
+     * <p>【概念】Spring 看到唯一建構子 → 自動找齊參數再呼叫；你不用自己 new。
      *
      * @param sagaInstanceRepository Saga 實例（orderdb）
      * @param orderRepository        訂單（orderdb）
@@ -83,7 +83,7 @@ public class OrderSagaEventHandler implements DomainEventConsumer {
 
     /**
      * 【職責】依 event type 分派：RESERVED→Confirm、CONFIRMED→完成、FAILED／CANCELLED→補償。
-     * 【使用】對應正向 SAGA-001 與負向 SAGA-002／TCC-002。
+     * <p>【使用】對應正向 SAGA-001 與負向 SAGA-002／TCC-002。
      * <pre>
      * FUNDS_RESERVED   → onReserved → Outbox CONFIRM_FUNDS
      * FUNDS_CONFIRMED  → onConfirmed → FILLED + COMPLETED
@@ -108,8 +108,8 @@ public class OrderSagaEventHandler implements DomainEventConsumer {
 
     /**
      * 【職責】Try 成功後推進至 ACCOUNT_CONFIRMING，並 Outbox 登記 CONFIRM_FUNDS。
-     * 【技巧】已終態或已在 CONFIRMING → return（防重送）。
-     * 【使用】僅由 {@link #onMessage} 在 FUNDS_RESERVED 時呼叫。
+     * <p>【技巧】已終態或已在 CONFIRMING → return（防重送）。
+     * <p>【使用】僅由 {@link #onMessage} 在 FUNDS_RESERVED 時呼叫。
      */
     private void onReserved(SagaMessage message) {
         SagaInstance saga = requireSaga(message.sagaId());
@@ -130,7 +130,7 @@ public class OrderSagaEventHandler implements DomainEventConsumer {
 
     /**
      * 【職責】Confirm 成功：訂單 FILLED、Saga COMPLETED。
-     * 【使用】僅由 {@link #onMessage} 在 FUNDS_CONFIRMED 時呼叫；前台應看到 COMPLETED＋FILLED。
+     * <p>【使用】僅由 {@link #onMessage} 在 FUNDS_CONFIRMED 時呼叫；前台應看到 COMPLETED＋FILLED。
      */
     private void onConfirmed(SagaMessage message) {
         SagaInstance saga = requireSaga(message.sagaId());

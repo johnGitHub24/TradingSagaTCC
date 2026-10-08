@@ -14,14 +14,14 @@ import java.time.Instant;
 
 /**
  * 【職責】訂單庫的 Saga 步驟日誌，供前台時間軸與除錯。
- * 【技巧】只追加（append-only）：建立後沒有任何修改方法；一筆 Saga 對多筆步驟，以 sagaId 關聯（不設 JPA 關聯／FK）。
- * 【概念】{@link SagaInstance#getStatus()} 只告訴你「現在在哪」；本表告訴你「怎麼走到這裡」，
- * 是一份可讀的流程軌跡，不是狀態來源（判斷流程是否結束請看 Saga 狀態）。
- * 【使用】寫入時機與 name：{@code SagaOrchestrator.start}（ORDER_CREATED、RESERVE_COMMANDED）、
- * {@code OrderSagaEventHandler}（CONFIRM_COMMANDED、SAGA_COMPLETED）、
- * {@code OrderMarkFailedAction.compensate}（ORDER_MARK_FAILED）；
- * 讀取：{@code TradeQueryService.getSaga} → {@link com.trading.saga.order.dto.SagaResponse} 的 steps，前台 index.html 顯示時間軸。
- * 【邊界】不是 Kafka 本體；Kafka 軌跡另見記憶體 EventLog（{@code EventLogService}）。
+ * <p>【技巧】只追加（append-only）：建立後沒有任何修改方法；一筆 Saga 對多筆步驟，以 sagaId 關聯（不設 JPA 關聯／FK）。
+ * <p>【概念】{@link SagaInstance#getStatus()} 只告訴你「現在在哪」；本表告訴你「怎麼走到這裡」，
+ * <br>是一份可讀的流程軌跡，不是狀態來源（判斷流程是否結束請看 Saga 狀態）。
+ * <p>【使用】寫入時機與 name：{@code SagaOrchestrator.start}（ORDER_CREATED、RESERVE_COMMANDED）、
+ * <br>{@code OrderSagaEventHandler}（CONFIRM_COMMANDED、SAGA_COMPLETED）、
+ * <br>{@code OrderMarkFailedAction.compensate}（ORDER_MARK_FAILED）；
+ * <br>讀取：{@code TradeQueryService.getSaga} → {@link com.trading.saga.order.dto.SagaResponse} 的 steps，前台 index.html 顯示時間軸。
+ * <p>【邊界】不是 Kafka 本體；Kafka 軌跡另見記憶體 EventLog（{@code EventLogService}）。
  */
 @Entity
 // saga_id 索引：TradeQueryService.getSaga 以 findBySagaIdOrderByAtAscIdAsc 查時間軸，避免全表掃描（hbm2ddl 建表時一併建立）
@@ -60,8 +60,8 @@ public class SagaStep {
 
     /**
      * 【職責】記錄一步（at＝現在，尚未 persist）。
-     * 【使用】與狀態變更在同一 order TX 內 {@code sagaStepRepository.save(SagaStep.of(...))}，
-     * 讓軌跡與狀態同進同退（TX rollback 時不會留下假步驟）。
+     * <p>【使用】與狀態變更在同一 order TX 內 {@code sagaStepRepository.save(SagaStep.of(...))}，
+     * <br>讓軌跡與狀態同進同退（TX rollback 時不會留下假步驟）。
      * <pre>
      * SagaStep.of(sagaId, "ORDER_CREATED", "order PENDING amount=10000");
      * </pre>

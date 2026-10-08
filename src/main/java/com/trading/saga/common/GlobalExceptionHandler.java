@@ -20,11 +20,11 @@ import java.util.Set;
 
 /**
  * 【職責】例外 → 穩定 JSON；靜態資源缺失必須 404 而非 500。
- * 【技巧】{@code @RestControllerAdvice} 攔截所有 Controller 拋出的例外；
- *         Spring 依「最具體型別優先」挑 handler，所以 {@link Exception} 兜底不會搶走前面幾個。
- * 【概念】錯誤形狀固定為 {@code { timestamp, status, error, message }}（驗證失敗多一個 {@code fieldErrors}），
- *         與 {@code API規格書.md}「錯誤形狀」一致，前台與測試只需解析一種格式。
- * 【邊界】不決定何時拋業務例外。
+ * <p>【技巧】{@code @RestControllerAdvice} 攔截所有 Controller 拋出的例外；
+ * <br>Spring 依「最具體型別優先」挑 handler，所以 {@link Exception} 兜底不會搶走前面幾個。
+ * <p>【概念】錯誤形狀固定為 {@code { timestamp, status, error, message }}（驗證失敗多一個 {@code fieldErrors}），
+ * <br>與 {@code API規格書.md}「錯誤形狀」一致，前台與測試只需解析一種格式。
+ * <p>【邊界】不決定何時拋業務例外。
  *
  * <p>【HTTP 狀態對照】
  * <ul>
@@ -43,8 +43,8 @@ public class GlobalExceptionHandler {
 
     /**
      * 【職責】領域資源不存在 → 404。
-     * 【概念】{@code message} 直接回傳例外訊息（例如 {@code Account not found: ACC-999}），
-     *         這類訊息只含查詢鍵，可安全給前端顯示。
+     * <p>【概念】{@code message} 直接回傳例外訊息（例如 {@code Account not found: ACC-999}），
+     * <br>這類訊息只含查詢鍵，可安全給前端顯示。
      *
      * @param ex 由 Service 查無資料時拋出
      * @return 404 + 錯誤 JSON
@@ -57,9 +57,9 @@ public class GlobalExceptionHandler {
 
     /**
      * 【職責】favicon 等靜態 404。
-     * 【概念】Spring Boot 3.2 起找不到靜態資源會拋 {@link NoResourceFoundException}；
-     *         若沒有這個 handler，會落到下方 {@link Exception} 兜底變成 500 並印 error log。
-     *         記 debug 而非 warn：瀏覽器自動要 favicon 很常見，不該洗版。
+     * <p>【概念】Spring Boot 3.2 起找不到靜態資源會拋 {@link NoResourceFoundException}；
+     * <br>若沒有這個 handler，會落到下方 {@link Exception} 兜底變成 500 並印 error log。
+     * <br>記 debug 而非 warn：瀏覽器自動要 favicon 很常見，不該洗版。
      *
      * @param ex 靜態資源解析失敗
      * @return 404 + 錯誤 JSON
@@ -72,9 +72,9 @@ public class GlobalExceptionHandler {
 
     /**
      * 【職責】請求 body 讀不懂 → 400。
-     * 【概念】與 422 的分界：400＝連 JSON 都解析不了（語法錯、數字欄位給字串），根本產生不出 {@code TradeRequest}；
-     *         422＝JSON 正確但內容違反驗證規則。若沒有這個 handler，會落到兜底變成 500，誤導呼叫端以為是伺服器錯。
-     *         message 固定，不回傳 Jackson 的原始錯誤（內含類別名稱等內部細節）。
+     * <p>【概念】與 422 的分界：400＝連 JSON 都解析不了（語法錯、數字欄位給字串），根本產生不出 {@code TradeRequest}；
+     * <br>422＝JSON 正確但內容違反驗證規則。若沒有這個 handler，會落到兜底變成 500，誤導呼叫端以為是伺服器錯。
+     * <br>message 固定，不回傳 Jackson 的原始錯誤（內含類別名稱等內部細節）。
      *
      * @param ex Jackson 反序列化失敗
      * @return 400 + 錯誤 JSON
@@ -87,9 +87,9 @@ public class GlobalExceptionHandler {
 
     /**
      * 【職責】HTTP 方法不支援 → 405，並帶 {@code Allow} header。
-     * 【技巧】{@link HttpRequestMethodNotSupportedException#getSupportedHttpMethods()} 取該路徑支援的方法，
-     *         寫進 {@code Allow}（RFC 9110 要求 405 回應附上）；取不到時省略 header。
-     * 【概念】例如對 {@code /api/v1/trades} 送 DELETE：路徑存在、方法不對，屬呼叫端錯誤而非 500。
+     * <p>【技巧】{@link HttpRequestMethodNotSupportedException#getSupportedHttpMethods()} 取該路徑支援的方法，
+     * <br>寫進 {@code Allow}（RFC 9110 要求 405 回應附上）；取不到時省略 header。
+     * <p>【概念】例如對 {@code /api/v1/trades} 送 DELETE：路徑存在、方法不對，屬呼叫端錯誤而非 500。
      *
      * @param ex Spring MVC 找不到對應方法的 handler
      * @return 405 + 錯誤 JSON（message 含被拒的方法名）
@@ -108,10 +108,10 @@ public class GlobalExceptionHandler {
 
     /**
      * 【職責】{@code @Valid} 失敗 → 422，附欄位層級錯誤。
-     * 【技巧】把 {@link FieldError} 攤平成 {@code 欄位名 → 訊息} 的 Map，前台可直接標在對應輸入框。
-     * 【概念】用 422（Unprocessable Entity）而非 400：JSON 格式正確，只是內容不符規則，
-     *         對齊 {@code API規格書.md}「驗證失敗 → 422」。
-     *         同一欄位多個違規時 Map 只留最後一則。
+     * <p>【技巧】把 {@link FieldError} 攤平成 {@code 欄位名 → 訊息} 的 Map，前台可直接標在對應輸入框。
+     * <p>【概念】用 422（Unprocessable Entity）而非 400：JSON 格式正確，只是內容不符規則，
+     * <br>對齊 {@code API規格書.md}「驗證失敗 → 422」。
+     * <br>同一欄位多個違規時 Map 只留最後一則。
      *
      * @param ex Bean Validation 結果
      * @return 422 + 錯誤 JSON（含 {@code fieldErrors}）
@@ -130,10 +130,10 @@ public class GlobalExceptionHandler {
 
     /**
      * 【職責】兜底 → 500。
-     * 【概念】回應只給固定訊息，避免把 stack trace／SQL 等內部細節外洩給呼叫端；
-     *         完整例外寫進 error log 供排查。
-     * 【邊界】JSON 解析失敗（400）、不支援的 HTTP 方法（405）已由上方 handler 認領；
-     *         其餘未個別處理的 Spring MVC 框架例外（如不支援的 Content-Type）仍會落到這裡成為 500。
+     * <p>【概念】回應只給固定訊息，避免把 stack trace／SQL 等內部細節外洩給呼叫端；
+     * <br>完整例外寫進 error log 供排查。
+     * <p>【邊界】JSON 解析失敗（400）、不支援的 HTTP 方法（405）已由上方 handler 認領；
+     * <br>其餘未個別處理的 Spring MVC 框架例外（如不支援的 Content-Type）仍會落到這裡成為 500。
      *
      * @param ex 未被上方 handler 認領的任何例外
      * @return 500 + 錯誤 JSON

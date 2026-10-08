@@ -18,14 +18,14 @@ import static org.mockito.Mockito.verify;
 
 /**
  * 【職責】帳戶 command handler 單元：三種命令各自回覆正確的結果事件。
- * 覆蓋 {@link AccountCommandHandler} 的全部分支（帳戶側 TCC 參與者）：
+ * <br>覆蓋 {@link AccountCommandHandler} 的全部分支（帳戶側 TCC 參與者）：
  * <ul>
  *   <li>{@code RESERVE_FUNDS}：SAGA-001（Try 成功 → {@code FUNDS_RESERVED}）、SAGA-002（Try 失敗 → {@code FUNDS_FAILED}）。</li>
  *   <li>{@code CONFIRM_FUNDS}：SAGA-001（Confirm 成功 → {@code FUNDS_CONFIRMED}）、
  *       TCC-002（forceFail → {@code FUNDS_CANCELLED}）、Confirm 失敗且非 forceFail → {@code FUNDS_FAILED}。</li>
  *   <li>{@code CANCEL_FUNDS}：一律 Cancel 後回 {@code FUNDS_CANCELLED}。</li>
  * </ul>
- * 【技巧】
+ * <p>【技巧】
  * <ul>
  *   <li>{@link TccResource}／{@link KafkaMessageSender} 都是介面，直接 {@code @Mock}；
  *       Handler 不用 {@code @InjectMocks}，改在每個 Test 內手動 new，第 3 個參數 event topic 一目了然。</li>
@@ -34,9 +34,9 @@ import static org.mockito.Mockito.verify;
  *   <li>{@link ArgumentCaptor} 抓出 {@code send(...)} 第 3 個參數（Handler 內部新組的 {@link SagaMessage}），
  *       再檢查它的 {@code type()}。</li>
  * </ul>
- * 【概念】帳戶側收到命令後「成功或失敗都回一則 event」給訂單側編排者，不丟例外給 Kafka；
- * 編排者只聽 event 決定下一步（Confirm 或補償）。本測試只看「收到什麼命令 → 發出什麼 event」，
- * 不啟動 Spring、不連 Kafka，所以 {@code @Value("${trading.kafka.event-topic}")} 不生效，topic 要手動傳入。
+ * <p>【概念】帳戶側收到命令後「成功或失敗都回一則 event」給訂單側編排者，不丟例外給 Kafka；
+ * <br>編排者只聽 event 決定下一步（Confirm 或補償）。本測試只看「收到什麼命令 → 發出什麼 event」，
+ * <br>不啟動 Spring、不連 Kafka，所以 {@code @Value("${trading.kafka.event-topic}")} 不生效，topic 要手動傳入。
  */
 // 啟用 Mockito：自動建立下方 @Mock 欄位，並在每個 Test 結束檢查是否有多餘的 stub（嚴格模式）
 @ExtendWith(MockitoExtension.class)
@@ -203,7 +203,7 @@ class AccountCommandHandlerTest {
 
     /**
      * 【職責】驗證 Handler 對 event topic 送出剛好一則、key＝sagaId 的事件，並回傳該事件的 type。
-     * 【技巧】{@link ArgumentCaptor} 抓 {@code send(...)} 第 3 個參數；{@code verify} 預設即「剛好 1 次」。
+     * <p>【技巧】{@link ArgumentCaptor} 抓 {@code send(...)} 第 3 個參數；{@code verify} 預設即「剛好 1 次」。
      *
      * @param sagaId 預期的 Kafka key
      * @return 送出事件的 type

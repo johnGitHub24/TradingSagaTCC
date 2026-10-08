@@ -27,7 +27,7 @@ import static org.mockito.Mockito.verify;
 
 /**
  * 【職責】{@link AccountTccService} 單元層：與 SAGA-001／SAGA-002／TCC-002 同一 TCC 契約。
- * 【技巧】金額來自 {@code docs/test-data/trade/*.json}；Mock 帳戶庫 Repository。
+ * <p>【技巧】金額來自 {@code docs/test-data/trade/*.json}；Mock 帳戶庫 Repository。
  *
  * <p>【概念·金額從哪來】{@link #amountOf} 讀 fixture 的 {@code quantity × price}：</p>
  * <pre>
@@ -51,12 +51,12 @@ import static org.mockito.Mockito.verify;
  *   <li><b>Cancel 是把凍結退回</b>：frozen 回到 available，數字回到起點。</li>
  * </ul>
  * <p>【常見誤會】fixture 的 description 寫「available 90000」，指的是<b>整條 Saga 跑完</b>
- * （Try＋Confirm）的結果。單看 Try 之後 available 也是 90000，但錢只是被凍結；
- * 要分辨「凍結中」還是「已扣款」，看 frozen 與 total，不要只看 available。</p>
+ * <br>（Try＋Confirm）的結果。單看 Try 之後 available 也是 90000，但錢只是被凍結；
+ * <br>要分辨「凍結中」還是「已扣款」，看 frozen 與 total，不要只看 available。</p>
  * <p>【注意】{@code setUp()} 每個 {@code @Test} 前都重建帳戶，所以各測試互不影響、起點都是 100000／0。</p>
  *
  * <p>【範圍·本類只測一格】直接呼叫 {@code tryReserve}／{@code confirm}，拿到 boolean 就結束；
- * 沒有 Spring、沒有 Kafka、repository 是假的。同一個 Case 分三層測，各管一段：</p>
+ * <br>沒有 Spring、沒有 Kafka、repository 是假的。同一個 Case 分三層測，各管一段：</p>
  * <pre>
  * 層級                                  執行範圍
  * ───────────────────────────────────   ────────────────────────────────────────────────
@@ -65,7 +65,7 @@ import static org.mockito.Mockito.verify;
  * TradeSagaIntegrationTest              整條鏈：POST → Outbox → Kafka → Handler → TCC → 事件 → 補償
  * </pre>
  * <p>整合測試只寫「發 POST」與「await 等終態」兩步，中間由 OutboxRelayJob 輪詢、Kafka listener 在背景自己跑，
- * 所以要用 Awaitility 等結果，不能呼叫完立刻檢查。</p>
+ * <br>所以要用 Awaitility 等結果，不能呼叫完立刻檢查。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AccountTccService unit (TCC)")
@@ -206,8 +206,8 @@ class AccountTccServiceTest {
      * 手動 Try 之後（準備）            90000    10000   100000
      * confirm(false) 之後           90000        0    90000   ← total 才真的少 10000
      * </pre>
-     * 【注意】available 在 Try 之後就已是 90000，Confirm 前後<b>都是 90000</b>；
-     * 真正的變化在 frozen（10000 → 0）與 total（100000 → 90000）。
+     * <p>【注意】available 在 Try 之後就已是 90000，Confirm 前後<b>都是 90000</b>；
+     * <br>真正的變化在 frozen（10000 → 0）與 total（100000 → 90000）。
      */
     @Test
     @DisplayName("SAGA-001: confirm(forceFail=false) deducts frozen")

@@ -8,13 +8,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 【職責】保護 Saga 狀態機合法轉移（編排終態與補償路徑）。
- * 覆蓋 {@link SagaStatus#canTransitionTo}／{@link SagaStatus#isTerminal} 與
- * {@link SagaInstance#transitionTo}（領域層）；對應 Case SAGA-001（成功）、SAGA-002／TCC-002（補償）。
- * 【技巧】純 enum／純物件斷言，不啟動 Spring；合法邊用 {@code isTrue()}，非法邊用 {@code isFalse()}，
- * 並以 {@code assertThatThrownBy} 確認實體層真的會擋下非法轉移。
- * 【概念】成功：STARTED→ACCOUNT_TRYING→ACCOUNT_CONFIRMING→COMPLETED；
- * 失敗：任中段（STARTED／ACCOUNT_TRYING／ACCOUNT_CONFIRMING）→COMPENSATING→COMPENSATED（補償本身失敗則→FAILED）。
- * 終態（COMPLETED／COMPENSATED／FAILED）不可再轉，Kafka 重送事件時才不會把已結束的 Saga 改掉。
+ * <br>覆蓋 {@link SagaStatus#canTransitionTo}／{@link SagaStatus#isTerminal} 與
+ * <br>{@link SagaInstance#transitionTo}（領域層）；對應 Case SAGA-001（成功）、SAGA-002／TCC-002（補償）。
+ * <p>【技巧】純 enum／純物件斷言，不啟動 Spring；合法邊用 {@code isTrue()}，非法邊用 {@code isFalse()}，
+ * <br>並以 {@code assertThatThrownBy} 確認實體層真的會擋下非法轉移。
+ * <p>【概念】成功：STARTED→ACCOUNT_TRYING→ACCOUNT_CONFIRMING→COMPLETED；
+ * <br>失敗：任中段（STARTED／ACCOUNT_TRYING／ACCOUNT_CONFIRMING）→COMPENSATING→COMPENSATED（補償本身失敗則→FAILED）。
+ * <br>終態（COMPLETED／COMPENSATED／FAILED）不可再轉，Kafka 重送事件時才不會把已結束的 Saga 改掉。
  */
 // 測試報告／IDE 上顯示的名稱
 @DisplayName("SagaStatus transitions")
@@ -43,7 +43,7 @@ class SagaStatusTest {
 
     /**
      * SAGA-002／TCC-002：任一中段狀態（含 Try 之前的 STARTED）失敗都能進入補償，
-     * 補償收尾為 COMPENSATED 或 FAILED，兩者皆為終態。
+     * <br>補償收尾為 COMPENSATED 或 FAILED，兩者皆為終態。
      */
     @Test
     @DisplayName("SAGA-002 / TCC-002 compensation transitions are allowed")
@@ -73,7 +73,7 @@ class SagaStatusTest {
 
     /**
      * Given 已走完成功路徑的 Saga（COMPLETED），When 再要求轉 COMPENSATING，
-     * Then enum 規則回 false，且 {@link SagaInstance#transitionTo} 丟 {@link IllegalStateException}。
+     * <br>Then enum 規則回 false，且 {@link SagaInstance#transitionTo} 丟 {@link IllegalStateException}。
      */
     @Test
     @DisplayName("COMPLETED cannot transition to COMPENSATING")

@@ -17,13 +17,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 【職責】靜態 404 不可被兜成 500；領域 404 穩定。
- * 覆蓋 {@link GlobalExceptionHandler}（Web 層例外轉換）；對應 Case TRADE-001（404 JSON 契約）
- * 與 TRADE-002（JSON 壞掉 400、方法不支援 405，不可落到兜底 500）。
- * 【技巧】不啟動 Spring、不用 MockMvc：直接 new 出 Handler，手動建立例外後呼叫對應的
- * {@code @ExceptionHandler} 方法，只驗證「例外 → HTTP 狀態碼＋JSON body」這段轉換。
- * 【概念】{@code @RestControllerAdvice} 會攔截 Controller 丟出的例外並回傳統一格式
- * {@code {timestamp, status, error, message}}。若沒有專屬的 {@code NoResourceFoundException} 處理器，
- * 瀏覽器自動請求的 {@code /favicon.ico} 會落到兜底 {@code handleGeneric} 變成 500，故需此測試守住 404。
+ * <br>覆蓋 {@link GlobalExceptionHandler}（Web 層例外轉換）；對應 Case TRADE-001（404 JSON 契約）
+ * <br>與 TRADE-002（JSON 壞掉 400、方法不支援 405，不可落到兜底 500）。
+ * <p>【技巧】不啟動 Spring、不用 MockMvc：直接 new 出 Handler，手動建立例外後呼叫對應的
+ * <br>{@code @ExceptionHandler} 方法，只驗證「例外 → HTTP 狀態碼＋JSON body」這段轉換。
+ * <p>【概念】{@code @RestControllerAdvice} 會攔截 Controller 丟出的例外並回傳統一格式
+ * <br>{@code {timestamp, status, error, message}}。若沒有專屬的 {@code NoResourceFoundException} 處理器，
+ * <br>瀏覽器自動請求的 {@code /favicon.ico} 會落到兜底 {@code handleGeneric} 變成 500，故需此測試守住 404。
  */
 // 測試報告／IDE 上顯示的名稱
 @DisplayName("GlobalExceptionHandler unit")
@@ -59,7 +59,7 @@ class GlobalExceptionHandlerTest {
 
     /**
      * TRADE-001：Given 領域例外「Order not found: missing」，When 交給 Handler，
-     * Then 回 404 且 body.message 原樣帶出例外訊息。
+     * <br>Then 回 404 且 body.message 原樣帶出例外訊息。
      */
     @Test
     @DisplayName("TRADE-001: ResourceNotFoundException → 404")
@@ -83,7 +83,7 @@ class GlobalExceptionHandlerTest {
 
     /**
      * TRADE-002：Given Jackson 解析 body 失敗，When 交給 Handler，
-     * Then 回 400、error 為 "Bad Request"，且 message 固定、不外洩解析細節。
+     * <br>Then 回 400、error 為 "Bad Request"，且 message 固定、不外洩解析細節。
      */
     @Test
     @DisplayName("TRADE-002: HttpMessageNotReadableException → 400")
@@ -108,7 +108,7 @@ class GlobalExceptionHandlerTest {
 
     /**
      * TRADE-002：Given 對只支援 GET／POST 的路徑送 DELETE，When 交給 Handler，
-     * Then 回 405、{@code Allow} header 列出 GET 與 POST，message 含被拒的方法名。
+     * <br>Then 回 405、{@code Allow} header 列出 GET 與 POST，message 含被拒的方法名。
      */
     @Test
     @DisplayName("TRADE-002: HttpRequestMethodNotSupportedException → 405 + Allow")

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 【職責】帳戶查詢與練習重置。
- * 【使用】前台顯示餘額／「還原種子」按鈕；Case ACCOUNT-001。
+ * <p>【使用】前台顯示餘額／「還原種子」按鈕；Case ACCOUNT-001。
  *
  * <p>【怎麼運作】{@code @RestController} + 建構子注入 {@link AccountQueryService}（與 {@link com.trading.saga.order.TradeController} 相同 DI）。
  */
@@ -28,7 +28,7 @@ public class AccountController {
 
     /**
      * 【職責】查餘額。
-     * 【使用】{@code GET /api/v1/accounts/ACC-001} → available／frozen／total。
+     * <p>【使用】{@code GET /api/v1/accounts/ACC-001} → available／frozen／total。
      *
      * @param accountId 帳戶 id（種子為 ACC-001）
      */
@@ -39,7 +39,7 @@ public class AccountController {
 
     /**
      * 【職責】還原種子餘額（available=100000, frozen=0）。
-     * 【使用】每跑一輪 Demo／Smoke 前建議先 reset。
+     * <p>【使用】每跑一輪 Demo／Smoke 前建議先 reset。
      * <pre>
      * POST /api/v1/accounts/ACC-001/reset
      * </pre>

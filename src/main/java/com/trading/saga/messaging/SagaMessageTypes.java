@@ -2,7 +2,7 @@ package com.trading.saga.messaging;
 
 /**
  * 【職責】Kafka／Outbox 共用的訊息型別常數：{@link SagaMessage#type()} 只會是下列 7 個字串之一。
- * 送出端與接收端都比對同一組常數，避免手打字串拼錯（例如 {@code "FUND_RESERVED"} 少一個 S 就永遠收不到）。
+ * <br>送出端與接收端都比對同一組常數，避免手打字串拼錯（例如 {@code "FUND_RESERVED"} 少一個 S 就永遠收不到）。
  *
  * <p>【概念·兩種訊息】</p>
  * <ul>
@@ -55,7 +55,7 @@ package com.trading.saga.messaging;
  * </ul>
  *
  * <p>【技巧】用 {@code public static final String} 而非 enum：Kafka JSON 直接放字串，
- * 未知型別（例如未來新版多送一種）接收端 if-else 不命中就忽略，不會因反序列化 enum 失敗而整批卡住。</p>
+ * <br>未知型別（例如未來新版多送一種）接收端 if-else 不命中就忽略，不會因反序列化 enum 失敗而整批卡住。</p>
  *
  * @see SagaMessage
  * @see AccountCommandHandler
@@ -66,58 +66,58 @@ public final class SagaMessageTypes {
 
     /**
      * 【命令】請帳戶側做 TCC <b>Try</b>：從 available 凍結 amount 到 frozen，並寫一張 TRYING 預留票。
-     * 【誰送】{@code SagaOrchestrator.start}（下單時，與訂單／Saga 同一 Local TX 寫入 Outbox）。
-     * 【誰收】{@link AccountCommandHandler} → {@code tryReserve}。
-     * 【回覆】成功 {@link #FUNDS_RESERVED}；餘額不足 {@link #FUNDS_FAILED}（不寫預留票）。
+     * <p>【誰送】{@code SagaOrchestrator.start}（下單時，與訂單／Saga 同一 Local TX 寫入 Outbox）。
+     * <p>【誰收】{@link AccountCommandHandler} → {@code tryReserve}。
+     * <p>【回覆】成功 {@link #FUNDS_RESERVED}；餘額不足 {@link #FUNDS_FAILED}（不寫預留票）。
      */
     public static final String RESERVE_FUNDS = "RESERVE_FUNDS";
 
     /**
      * 【命令】請帳戶側做 TCC <b>Confirm</b>：消耗凍結款（frozen 減少，真正扣款），預留票 → CONFIRMED。
-     * 【誰送】{@code OrderSagaEventHandler.onReserved}（收到 {@link #FUNDS_RESERVED} 後寫 Outbox）。
-     * 【誰收】{@link AccountCommandHandler} → {@code confirm(sagaId, forceFail)}。
-     * 【回覆】成功 {@link #FUNDS_CONFIRMED}；{@code forceFail=true} 時帳戶側改做 Cancel 並回 {@link #FUNDS_CANCELLED}。
-     * 【注意】程式雖保留「失敗回 {@link #FUNDS_FAILED}」分支，但目前 {@code confirm} 只在 forceFail 時回 false，
-     * 該分支屬防禦性寫法；查無預留票會丟例外，不會回事件。
+     * <p>【誰送】{@code OrderSagaEventHandler.onReserved}（收到 {@link #FUNDS_RESERVED} 後寫 Outbox）。
+     * <p>【誰收】{@link AccountCommandHandler} → {@code confirm(sagaId, forceFail)}。
+     * <p>【回覆】成功 {@link #FUNDS_CONFIRMED}；{@code forceFail=true} 時帳戶側改做 Cancel 並回 {@link #FUNDS_CANCELLED}。
+     * <p>【注意】程式雖保留「失敗回 {@link #FUNDS_FAILED}」分支，但目前 {@code confirm} 只在 forceFail 時回 false，
+     * <br>該分支屬防禦性寫法；查無預留票會丟例外，不會回事件。
      */
     public static final String CONFIRM_FUNDS = "CONFIRM_FUNDS";
 
     /**
      * 【命令】請帳戶側做 TCC <b>Cancel</b>：把凍結款退回 available，預留票 → CANCELLED（可安全重入）。
-     * 【誰送】<b>目前無</b>（擴增點：訂單側主動取消／逾時取消時使用）。
-     * 【誰收】{@link AccountCommandHandler} → {@code cancel}。
-     * 【回覆】一律 {@link #FUNDS_CANCELLED}。
+     * <p>【誰送】<b>目前無</b>（擴增點：訂單側主動取消／逾時取消時使用）。
+     * <p>【誰收】{@link AccountCommandHandler} → {@code cancel}。
+     * <p>【回覆】一律 {@link #FUNDS_CANCELLED}。
      */
     public static final String CANCEL_FUNDS = "CANCEL_FUNDS";
 
     /**
      * 【事件】Try 成功：錢已凍結、預留票 TRYING。
-     * 【誰送】{@link AccountCommandHandler}（回覆 {@link #RESERVE_FUNDS}）。
-     * 【誰收】{@code OrderSagaEventHandler.onReserved}：Saga → ACCOUNT_CONFIRMING，並經 Outbox 發 {@link #CONFIRM_FUNDS}。
-     * 【冪等】Saga 已終態或已是 ACCOUNT_CONFIRMING → 直接 return，不重發 Confirm。
+     * <p>【誰送】{@link AccountCommandHandler}（回覆 {@link #RESERVE_FUNDS}）。
+     * <p>【誰收】{@code OrderSagaEventHandler.onReserved}：Saga → ACCOUNT_CONFIRMING，並經 Outbox 發 {@link #CONFIRM_FUNDS}。
+     * <p>【冪等】Saga 已終態或已是 ACCOUNT_CONFIRMING → 直接 return，不重發 Confirm。
      */
     public static final String FUNDS_RESERVED = "FUNDS_RESERVED";
 
     /**
      * 【事件】Confirm 成功：真正扣款、預留票 CONFIRMED。
-     * 【誰送】{@link AccountCommandHandler}（回覆 {@link #CONFIRM_FUNDS}）。
-     * 【誰收】{@code OrderSagaEventHandler.onConfirmed}：訂單 → FILLED、Saga → COMPLETED（正向終點）。
+     * <p>【誰送】{@link AccountCommandHandler}（回覆 {@link #CONFIRM_FUNDS}）。
+     * <p>【誰收】{@code OrderSagaEventHandler.onConfirmed}：訂單 → FILLED、Saga → COMPLETED（正向終點）。
      */
     public static final String FUNDS_CONFIRMED = "FUNDS_CONFIRMED";
 
     /**
      * 【事件】資金步驟失敗，<b>沒有預留票</b>（典型：Try 時餘額不足，錢從未被凍結）。
-     * 【誰送】{@link AccountCommandHandler}（回覆 {@link #RESERVE_FUNDS} 失敗）。
-     * 【誰收】{@code OrderSagaEventHandler} → {@code CompensationAction.compensate}：
-     * Saga → COMPENSATING → COMPENSATED、訂單 → FAILED。
+     * <p>【誰送】{@link AccountCommandHandler}（回覆 {@link #RESERVE_FUNDS} 失敗）。
+     * <p>【誰收】{@code OrderSagaEventHandler} → {@code CompensationAction.compensate}：
+     * <br>Saga → COMPENSATING → COMPENSATED、訂單 → FAILED。
      */
     public static final String FUNDS_FAILED = "FUNDS_FAILED";
 
     /**
      * 【事件】凍結款已退回：預留票 CANCELLED（典型：TCC-002 forceFail，或收到 {@link #CANCEL_FUNDS}）。
-     * 【誰送】{@link AccountCommandHandler}（回覆 {@link #CONFIRM_FUNDS}＋forceFail，或 {@link #CANCEL_FUNDS}）。
-     * 【誰收】{@code OrderSagaEventHandler} → {@code CompensationAction.compensate}（與 {@link #FUNDS_FAILED} 同路）。
-     * 【注意】帳戶側的 CANCELLED（錢退了）≠ 訂單側的 COMPENSATED（流程收尾）；兩者由本事件串起。
+     * <p>【誰送】{@link AccountCommandHandler}（回覆 {@link #CONFIRM_FUNDS}＋forceFail，或 {@link #CANCEL_FUNDS}）。
+     * <p>【誰收】{@code OrderSagaEventHandler} → {@code CompensationAction.compensate}（與 {@link #FUNDS_FAILED} 同路）。
+     * <p>【注意】帳戶側的 CANCELLED（錢退了）≠ 訂單側的 COMPENSATED（流程收尾）；兩者由本事件串起。
      */
     public static final String FUNDS_CANCELLED = "FUNDS_CANCELLED";
 
