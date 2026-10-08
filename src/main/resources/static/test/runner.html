@@ -19,7 +19,7 @@
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
       <h1 class="h4 mb-1">L1 UI Smoke Runner</h1>
-      <p class="muted mb-0">真開埠後跑 SAGA-001／002、TCC-002、TRADE-001</p>
+      <p class="muted mb-0">真開埠後跑 SAGA-001／002、TCC-002、TCC-001、TRADE-001，以及 Dashboard DASH-001～003（下方 iframe 實際操作主畫面）</p>
     </div>
     <a href="/" class="btn btn-sm btn-outline-secondary">回主畫面</a>
   </div>
@@ -28,6 +28,11 @@
           data-testid="run-l1-smoke">RUN TESTING</button>
 
   <div id="results" class="row g-3"></div>
+
+  <div class="card mt-4">
+    <div class="card-header small muted">主畫面（DASH-002／003 在此 iframe 內點按鈕、驗狀態機區塊）</div>
+    <iframe id="ui-frame" data-testid="ui-frame" title="main dashboard" style="width:100%;height:680px;border:0;background:#0f1419"></iframe>
+  </div>
 </div>
 <script type="module" src="/test/suite.js"></script>
 </body>

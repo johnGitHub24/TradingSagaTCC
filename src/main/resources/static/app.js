@@ -1,15 +1,62 @@
 /**
- * TradingSagaTCC 靜態前台：同埠呼叫 /api/v1，輪詢 Saga 終態。
+ * TradingSagaTCC 靜態前台：同埠呼叫 /api/v1，輪詢 Saga 終態，並以圖像化 Dashboard 呈現三組狀態機。
  * 【技巧】終態判斷必須同時看 Saga＋訂單；逾時不得誤報「訂單 FAILED」。
+ * 狀態推導全在 dashboard.js（純函式，可單元測試）；本檔只負責拉資料、輪詢、重播與導航。
  * 【使用】由 index.html 以 module 載入；按鈕綁 place(false)／place(true)／placeInsufficient。
+ * 網址加 ?autoReplay=0 可關閉「完成後自動慢動作重播」（UI Smoke 用來直接斷言終態）。
  */
 import { createApp, ref, computed, onMounted } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+import {
+    liveSnapshot, buildLanes, buildVerdict, buildTimeline, diffLanes, STATUS_LEGEND, EMPTY_SNAPSHOT
+} from './dashboard.js';
 
 const API = '/api/v1';
 const POLL_MAX = 80;
 const POLL_MS = 250;
+const SECTIONS = ['console', 'dashboard', 'timeline', 'orders', 'trail'];
+
+/**
+ * 【職責】單條狀態機 lane：線性階段（箭頭區塊）＋終態分岔（成功／補償上下兩格）。
+ * 【使用】<state-lane :lane="lane" :changed="..."/>；lane 由 dashboard.js buildLanes 產生。
+ */
+const StateLane = {
+    props: { lane: { type: Object, required: true }, changed: { type: Boolean, default: false } },
+    template: `
+      <div class="sm-lane" :id="'lane-' + lane.key" :class="{ 'sm-lane-changed': changed }"
+           :data-testid="'lane-' + lane.key" :data-state="lane.raw ?? ''">
+        <div class="sm-lane-head">
+          <div>
+            <i class="bi me-1" :class="lane.icon"></i><strong>{{ lane.title }}</strong>
+            <span class="muted small ms-2">{{ lane.subtitle }}</span>
+          </div>
+          <div class="small">目前：
+            <span class="sm-current" :class="'tone-' + lane.current.tone" data-testid="lane-current">
+              {{ lane.current.zh }} <code>{{ lane.current.code }}</code>
+            </span>
+          </div>
+        </div>
+        <div class="sm-track">
+          <div v-for="st in lane.stages" :key="st.no" class="sm-stage" :class="'st-' + st.status"
+               :data-status="st.status" :data-code="st.code">
+            <div class="sm-no">{{ st.no }}<span v-if="st.tag" class="sm-tag">{{ st.tag }}</span></div>
+            <div class="sm-zh"><i class="bi me-1" :class="st.icon"></i>{{ st.zh }}</div>
+            <div class="sm-code">{{ st.code }}</div>
+            <div class="sm-desc">{{ st.desc }}</div>
+          </div>
+          <div class="sm-fork">
+            <div v-for="op in lane.fork" :key="op.no" class="sm-stage sm-end" :class="'st-' + op.status"
+                 :data-status="op.status" :data-code="op.code">
+              <div class="sm-no">{{ op.no }}<span v-if="op.tag" class="sm-tag">{{ op.tag }}</span></div>
+              <div class="sm-zh"><i class="bi me-1" :class="op.icon"></i>{{ op.zh }} <code class="sm-code-inline">{{ op.code }}</code></div>
+              <div class="sm-desc">{{ op.desc }}</div>
+            </div>
+          </div>
+        </div>
+      </div>`
+};
 
 createApp({
+    components: { StateLane },
     setup() {
         const loading = ref(false);
         const message = ref('');
@@ -19,7 +66,17 @@ createApp({
         const events = ref([]);
         const currentSaga = ref(null);
         const currentOrder = ref(null);
+        const currentTcc = ref(null);
         const form = ref({ quantity: 1, price: 10000 });
+
+        /** 重播：replayIndex＝null 表示看即時；數字表示正在看時間軸第幾格。 */
+        const replayIndex = ref(null);
+        const replaying = ref(false);
+        const autoReplay = ref(new URLSearchParams(location.search).get('autoReplay') !== '0');
+        const replaySpeed = ref(1000);
+        let replayToken = 0;
+
+        const activeSection = ref('dashboard');
 
         /** 【使用】依 Saga 終態選 badge 色：COMPLETED 綠；COMPENSATED／FAILED 黃。 */
         const sagaBadge = computed(() => {
@@ -35,6 +92,27 @@ createApp({
             if (s === 'FILLED') return 'bg-success';
             if (s === 'FAILED') return 'bg-warning text-dark';
             return 'bg-info text-dark';
+        });
+
+        /** 【職責】即時快照（三組狀態）→ 時間軸 → 目前要畫的那一格。 */
+        const liveSnap = computed(() => liveSnapshot(currentSaga.value, currentOrder.value, currentTcc.value));
+        const timeline = computed(() => buildTimeline(currentSaga.value, events.value, liveSnap.value));
+        const viewSnap = computed(() => {
+            const i = replayIndex.value;
+            return i !== null && timeline.value[i] ? timeline.value[i].snap : liveSnap.value;
+        });
+        const lanes = computed(() => buildLanes(viewSnap.value).map((lane) => ({
+            ...lane,
+            raw: { saga: viewSnap.value.sagaStatus, order: viewSnap.value.orderStatus, tcc: viewSnap.value.tcc }[lane.key]
+        })));
+        const verdict = computed(() => buildVerdict(viewSnap.value));
+
+        /** 【使用】重播時，本格相對上一格有變動的 lane 發光。 */
+        const changedLanes = computed(() => {
+            const i = replayIndex.value;
+            if (i === null || !timeline.value[i]) return [];
+            const prev = i > 0 ? timeline.value[i - 1].snap : EMPTY_SNAPSHOT;
+            return diffLanes(prev, timeline.value[i].snap);
         });
 
         /** 【使用】頂部提示；type 為 Bootstrap alert-*。 */
@@ -56,6 +134,9 @@ createApp({
             if (status === 'FAILED') return 'bg-warning text-dark';
             return 'bg-secondary';
         };
+
+        /** 【使用】時間軸偏移：+0 ms／+1.234 s。 */
+        const fmtOffset = (ms) => (ms < 1000 ? '+' + ms + ' ms' : '+' + (ms / 1000).toFixed(3) + ' s');
 
         /** 【使用】依 orderId 從目前 orders 列表找一筆。 */
         const findOrder = (orderId) => {
@@ -85,10 +166,28 @@ createApp({
             syncCurrentOrder();
         };
 
-        /** 【使用】手動「重新整理」。 */
+        /**
+         * 【職責】拉取帳戶庫的預留票（TCC lane 的資料來源）。
+         * 【概念】一律 200；exists=false 代表「無票」，不是錯誤。
+         * @param {string} sagaId
+         */
+        const loadTcc = async (sagaId) => {
+            const res = await fetch(`${API}/tcc/reservations/${sagaId}`);
+            if (res.ok) {
+                currentTcc.value = await res.json();
+            }
+        };
+
+        /** 【使用】手動「重新整理」；若正在看某筆 Saga，一併刷新它與預留票。 */
         const refresh = async () => {
             loading.value = true;
             try {
+                const sagaId = currentSaga.value?.sagaId;
+                if (sagaId) {
+                    const res = await fetch(`${API}/sagas/${sagaId}`);
+                    if (res.ok) currentSaga.value = await res.json();
+                    await loadTcc(sagaId);
+                }
                 await loadState();
             } catch (e) {
                 toast(String(e), 'alert-danger');
@@ -97,8 +196,44 @@ createApp({
             }
         };
 
+        /** 【使用】停止重播並回到即時畫面。 */
+        const backToLive = () => {
+            replayToken += 1;
+            replaying.value = false;
+            replayIndex.value = null;
+        };
+
         /**
-         * 【職責】輪詢 Saga 直到終態或逾時。
+         * 【職責】慢動作重播時間軸：每格停 replaySpeed 毫秒，讓三條 lane 逐格亮起。
+         * 【技巧】以 token 取消：新的重播／下單／跳格都會讓舊迴圈自行結束。
+         */
+        const startReplay = async () => {
+            if (timeline.value.length === 0) return;
+            replayToken += 1;
+            const token = replayToken;
+            replaying.value = true;
+            for (let i = 0; i < timeline.value.length; i += 1) {
+                if (token !== replayToken) return;
+                replayIndex.value = i;
+                await new Promise((r) => setTimeout(r, replaySpeed.value));
+            }
+            if (token === replayToken) backToLive();
+        };
+
+        /** 【使用】點時間軸某一列 → 停止重播並定格在該格。 */
+        const jumpTo = (i) => {
+            replayToken += 1;
+            replaying.value = false;
+            replayIndex.value = i;
+        };
+
+        /** 【使用】平滑捲動到指定區塊（導航列／lane 快捷鍵）。 */
+        const scrollTo = (id) => {
+            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+
+        /**
+         * 【職責】輪詢 Saga 直到終態或逾時；每輪同時刷新預留票與 Demo 狀態。
          * 【使用】place 成功拿到 sagaId 後立刻呼叫。
          * @param {string} sagaId
          * @returns {Promise<'COMPLETED'|'COMPENSATED'|'FAILED'|'TIMEOUT'>}
@@ -108,6 +243,7 @@ createApp({
                 const res = await fetch(`${API}/sagas/${sagaId}`);
                 if (res.ok) {
                     currentSaga.value = await res.json();
+                    await loadTcc(sagaId);
                     await loadState();
                     const status = currentSaga.value.status;
                     if (status === 'COMPLETED' || status === 'COMPENSATED' || status === 'FAILED') {
@@ -147,14 +283,17 @@ createApp({
         };
 
         /**
-         * 【職責】下單啟動 Saga 並輪詢結果。
+         * 【職責】下單啟動 Saga 並輪詢結果；終態後可自動慢動作重播。
          * 【使用】成功路徑 place(false)；TCC-002 place(true)。
          * @param {boolean} forceFail 是否故意補償
          */
         const place = async (forceFail) => {
+            backToLive();
             loading.value = true;
             message.value = '';
             currentOrder.value = null;
+            currentTcc.value = null;
+            let end = null;
             try {
                 const body = {
                     accountId: 'ACC-001',
@@ -175,12 +314,15 @@ createApp({
                     return;
                 }
                 toast('Saga 已啟動 ' + data.sagaId.slice(0, 8) + '… 輪詢中', 'alert-info');
-                const end = await pollSaga(data.sagaId);
+                end = await pollSaga(data.sagaId);
                 reportOutcome(end);
             } catch (e) {
                 toast(String(e), 'alert-danger');
             } finally {
                 loading.value = false;
+            }
+            if (end && end !== 'TIMEOUT' && autoReplay.value) {
+                startReplay();
             }
         };
 
@@ -196,8 +338,29 @@ createApp({
         };
 
         /**
+         * 【職責】點訂單列 → 在 Dashboard 檢視該筆的三組狀態機（導航到過去的交易）。
+         * @param {object} order 訂單列
+         */
+        const inspectOrder = async (order) => {
+            backToLive();
+            try {
+                const res = await fetch(`${API}/sagas/${order.sagaId}`);
+                if (!res.ok) {
+                    toast('查無 Saga ' + order.sagaId, 'alert-danger');
+                    return;
+                }
+                currentSaga.value = await res.json();
+                await loadTcc(order.sagaId);
+                syncCurrentOrder();
+                scrollTo('dashboard');
+            } catch (e) {
+                toast(String(e), 'alert-danger');
+            }
+        };
+
+        /**
          * 【職責】還原種子帳戶 100000。
-         * 【使用】左側「還原種子」；每輪 Demo 前建議先按。
+         * 【使用】「還原種子」；每輪 Demo 前建議先按。
          */
         const resetAccount = async () => {
             loading.value = true;
@@ -214,13 +377,31 @@ createApp({
             }
         };
 
+        /** 【技巧】IntersectionObserver 追蹤目前捲到哪個區塊，讓導航列高亮對應項目。 */
+        const watchSections = () => {
+            if (!('IntersectionObserver' in window)) return;
+            const io = new IntersectionObserver((entries) => {
+                for (const en of entries) {
+                    if (en.isIntersecting) activeSection.value = en.target.id;
+                }
+            }, { rootMargin: '-35% 0px -60% 0px' });
+            SECTIONS.forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) io.observe(el);
+            });
+        };
+
         onMounted(() => {
             refresh();
+            watchSections();
         });
 
         return {
-            loading, message, messageType, account, orders, events, currentSaga, currentOrder, form,
-            sagaBadge, orderBadge, orderBadgeClass, refresh, place, placeInsufficient, resetAccount, eventClass
+            loading, message, messageType, account, orders, events, currentSaga, currentOrder, currentTcc, form,
+            sagaBadge, orderBadge, orderBadgeClass, refresh, place, placeInsufficient, resetAccount, eventClass,
+            lanes, verdict, timeline, replayIndex, replaying, autoReplay, replaySpeed, changedLanes,
+            startReplay, backToLive, jumpTo, inspectOrder, scrollTo, fmtOffset, activeSection,
+            legend: STATUS_LEGEND
         };
     }
 }).mount('#app');

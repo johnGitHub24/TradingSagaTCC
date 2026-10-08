@@ -329,10 +329,12 @@ Kafka 可能重送同一則事件，三邊各自防重：
 
 ## 8. 怎麼自己觀察
 
-1. `bootRun` 後開 http://localhost:8093/
+1. `bootRun` 後開 http://localhost:8093/ —— **三方狀態機 Dashboard** 以「階段一 → 階段二 → … → 終態分岔（成功／補償）」圖像區塊同時畫出三組狀態（中文＋代碼）；
+   終態後自動慢動作重播，時間軸可點任一格定格（例如第 4 格：預留票已凍結、Saga 仍「凍結資金中」，即本節「暫時對不上」）。點訂單列可回看舊交易。
 2. 下單後記下 `sagaId`，查：
    - `GET /api/v1/sagas/{sagaId}` — Saga 狀態與步驟軌跡
    - `GET /api/v1/trades/{orderId}` — 訂單狀態
+   - `GET /api/v1/tcc/reservations/{sagaId}` — 預留票狀態（無票回 `exists=false`）
    - `GET /api/v1/accounts/ACC-001` — available／frozen
    - `GET /api/v1/events` — Kafka 走過哪些訊息 type
 3. 分別用一般下單、超額下單、`forceFail=true` 跑三個情境，對照第 4 節的表。
@@ -348,6 +350,7 @@ Kafka 可能重送同一則事件，三邊各自防重：
 | 事件推進 | `messaging/OrderSagaEventHandler.java` |
 | 補償 | `saga/OrderMarkFailedAction.java` |
 | 前台判讀 | `static/app.js` 的 `pollSaga`、`reportOutcome` |
+| 前台 Dashboard | `static/dashboard.js`（三條 lane 推導、時間軸重建）；規格 `static/test/dashboard.spec.js` |
 | 延伸閱讀 | [outbox-發件匣.md](outbox-發件匣.md)（命令怎麼寄出）、[codeGraphic.html](codeGraphic.html)（正負向流程圖） |
 
 ## 10. 一句話複習

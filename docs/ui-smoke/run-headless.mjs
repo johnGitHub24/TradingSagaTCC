@@ -53,7 +53,8 @@ try {
     }
 
     console.log('ALL_UI_SMOKE_OK');
-    console.log('劇情: SAGA-001=PASS; SAGA-002=PASS; TCC-002=PASS; TRADE-001=PASS');
+    const cases = await page.$$eval('#results strong', (nodes) => nodes.map((n) => n.textContent.trim()));
+    console.log('劇情: ' + cases.map((c) => c + '=PASS').join('; '));
 } catch (err) {
     console.error('UI_SMOKE_FAILED:', err.message || err);
     process.exitCode = 1;

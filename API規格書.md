@@ -83,6 +83,21 @@ body 不是合法 JSON（語法錯、型別轉不過去）→ **400**，`message
 
 將指定帳戶還原為 available=100000、frozen=0（練習重複跑劇情）。**200** 帳戶 DTO；不存在 **404**。
 
+## GET /api/v1/tcc/reservations/{sagaId}
+
+帳戶庫 TCC 預留票（Case TCC-001；前台 Dashboard 的 TCC 狀態機）。**一律 200**：查無票＝`exists=false`（Try 尚未執行，或 Try 失敗根本不寫票），不是 404。
+
+```json
+{ "sagaId": "...", "exists": true, "state": "CONFIRMED", "accountId": "ACC-001", "amount": 10000.0000, "createdAt": "..." }
+```
+
+| state | 意義 |
+|-------|------|
+| `TRYING` | 已凍結（available → frozen） |
+| `CONFIRMED` | 已扣款 |
+| `CANCELLED` | 已退回 |
+| `null`（`exists=false`） | 無票 |
+
 ## GET /api/v1/events
 
 Kafka 軌跡（記憶體 ring，最多 100 筆，新到舊）。

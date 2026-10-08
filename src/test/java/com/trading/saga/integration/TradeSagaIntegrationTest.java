@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,6 +39,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>SAGA-002：餘額不足 → Saga {@code COMPENSATED}、餘額不變。</li>
  *   <li>TCC-002：forceFail → Try 後 Cancel → Saga {@code COMPENSATED}、餘額還原。</li>
  *   <li>OUTBOX-001：下單後 Kafka 軌跡出現 {@code RESERVE_FUNDS}。</li>
+ *   <li>TCC-001：{@code GET /api/v1/tcc/reservations/{sagaId}} → 三情境終態預留票 CONFIRMED／無票／CANCELLED；未知 sagaId → 200 exists=false。</li>
+ *   <li>DASH-001：同埠靜態前台 index.html／dashboard.js／dashboard.spec.js → 200 且含 Dashboard 標記。</li>
  * </ul>
  * 【技巧】Request body 來自 {@code docs/test-data/}（EOS Fixture）；Awaitility 等終態。
  * <ul>
@@ -207,6 +210,12 @@ class TradeSagaIntegrationTest {
                 .andExpect(jsonPath(typesOf(sagaId), hasItem("RESERVE_FUNDS")))
                 // 也要有 FUNDS_CONFIRMED（帳戶側 Confirm 成功後發出的事件）
                 .andExpect(jsonPath(typesOf(sagaId), hasItem("FUNDS_CONFIRMED")));
+        // ===== Then④（TCC-001）：帳戶庫的預留票已兌現 =====
+        // FUNDS_CONFIRMED 在預留票 CONFIRMED 提交後才發，Saga COMPLETED 時票必為 CONFIRMED
+        mockMvc.perform(get("/api/v1/tcc/reservations/" + sagaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exists").value(true))
+                .andExpect(jsonPath("$.state").value("CONFIRMED"));
     }
 
     /** SAGA-002：Given 種子餘額 100000，When 下單 1 × 999999（餘額不足），Then Saga COMPENSATED、帳戶餘額不變。 */
@@ -232,6 +241,10 @@ class TradeSagaIntegrationTest {
                 .andExpect(jsonPath("$.available").value(100000))
                 // 也沒有任何凍結
                 .andExpect(jsonPath("$.frozen").value(0));
+        // ===== Then③（TCC-001）：Try 失敗根本不寫票 =====
+        mockMvc.perform(get("/api/v1/tcc/reservations/" + sagaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exists").value(false));
     }
 
     /** TCC-002：Given 種子餘額 100000，When 下單 1 × 10000 且 forceFail=true，Then Try 成功後在 Confirm 改走 Cancel，Saga COMPENSATED、餘額還原。 */
@@ -258,6 +271,52 @@ class TradeSagaIntegrationTest {
                 .andExpect(jsonPath("$.available").value(100000))
                 // 凍結歸零
                 .andExpect(jsonPath("$.frozen").value(0));
+        // ===== Then③（TCC-001）：預留票已退回 =====
+        mockMvc.perform(get("/api/v1/tcc/reservations/" + sagaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.exists").value(true))
+                .andExpect(jsonPath("$.state").value("CANCELLED"));
+    }
+
+    /**
+     * DASH-001：Given 同埠靜態前台，When GET index.html／dashboard.js／test/dashboard.spec.js，
+     * Then 200 且含 Dashboard 標記（三條 lane、導航列、時間軸）與狀態推導函式；單元層為 dashboard.spec.js。
+     */
+    @Test
+    @DisplayName("DASH-001: static dashboard assets served with lane markers")
+    void dashboardAssets_served() throws Exception {
+        // index.html：Dashboard 容器、導航列、三個情境按鈕、時間軸都要在（UI Smoke 依這些 data-testid 操作）
+        mockMvc.perform(get("/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(allOf(
+                        containsString("data-testid=\"sm-dashboard\""),
+                        containsString("data-testid=\"main-nav\""),
+                        containsString("data-testid=\"btn-saga-001\""),
+                        containsString("data-testid=\"timeline-row\""),
+                        containsString("<state-lane"))));
+        // dashboard.js：三條 lane 的推導與時間軸重建都由它輸出
+        mockMvc.perform(get("/dashboard.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(allOf(
+                        containsString("export function buildLanes"),
+                        containsString("export function buildTimeline"),
+                        // 靜態資源回應未必帶 charset，MockMvc 會以 ISO-8859-1 解碼，故只比對 ASCII 片段
+                        containsString("tcc_reservations"))));
+        // 規格檔要能被瀏覽器 runner 載入（UI Smoke 的 DASH-001 在瀏覽器內再跑一次）
+        mockMvc.perform(get("/test/dashboard.spec.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("export function runDashboardSpecs")));
+    }
+
+    /** TCC-001：Given 從未下單的 sagaId，When GET /api/v1/tcc/reservations/{sagaId}，Then 200 且 exists=false（無票是合法狀態，不是 404）。 */
+    @Test
+    @DisplayName("TCC-001: GET unknown reservation → 200 exists=false")
+    void reservation_unknown_noTicket() throws Exception {
+        mockMvc.perform(get("/api/v1/tcc/reservations/no-such-saga"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sagaId").value("no-such-saga"))
+                .andExpect(jsonPath("$.exists").value(false))
+                .andExpect(jsonPath("$.state").doesNotExist());
     }
 
     /** OUTBOX-001：Given 下單成功寫入 Outbox，When 排程轉送，Then 本次 sagaId 的 Kafka 軌跡出現 RESERVE_FUNDS，且 Saga 最終 COMPLETED。 */

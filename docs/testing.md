@@ -36,6 +36,17 @@
 | TRADE-002 | `GlobalExceptionHandlerTest` 400／405 | POST 壞 JSON → 400；DELETE `/api/v1/trades` → 405＋Allow |
 | ACCOUNT-001 | `AccountQueryServiceTest` | GET ACC-001 200（對照 seed JSON） |
 | OUTBOX-001 | `OutboxPublisherServiceTest`、`SagaOrchestratorTest` | 本次 sagaId 軌跡含 `RESERVE_FUNDS`，並等到 COMPLETED |
+| TCC-001 | `AccountQueryServiceTest` 有票／無票 | `GET /api/v1/tcc/reservations/{sagaId}`：SAGA-001→`CONFIRMED`、SAGA-002→`exists=false`、TCC-002→`CANCELLED`；未知 sagaId→200 `exists=false` |
+| DASH-001 | `static/test/dashboard.spec.js`（11 條；Node `docs/ui-smoke/run-dashboard-unit.mjs`＋瀏覽器 runner 同一份） | `index.html`／`dashboard.js`／`dashboard.spec.js` 200 且含 Dashboard 標記 |
+
+**UI 層專屬（Runtime Smoke，不進 check）：**
+
+| Case | 驗什麼 | 在哪跑 |
+|------|--------|--------|
+| DASH-002 | 主畫面點 SAGA-001／SAGA-002／TCC-002 按鈕 → 三條 lane 的 `data-state`、每個區塊 `data-status`、中文「目前」標籤、總結色、時間軸列數、available | `/test/runner.html` iframe（headless 同） |
+| DASH-003 | 點訂單列切換交易、時間軸定格第 1 格、回到即時、慢動作重播經過 STARTED→ACCOUNT_TRYING→ACCOUNT_CONFIRMING→COMPLETED、導航列捲動 | 同上 |
+
+**Dashboard JS 單元：** 純函式不需 bootRun，`node docs/ui-smoke/run-dashboard-unit.mjs` → `ALL_DASH_UNIT_OK`（`run-ui-smoke.ps1` 開瀏覽器前先跑）。Gate 仍不要求 Node。
 
 **整合測試隔離：** 同一類別共用 Spring Context，記憶體 Kafka 軌跡不會清空。軌跡斷言一律以 JsonPath `$[?(@.sagaId == '…')]` 篩本次 sagaId；每個下單 Test 都等 Saga 終態才結束，避免背景流程跨 Test 扣款。
 
@@ -61,7 +72,7 @@
 **Graph 路由：** `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`）。  
 **流程案例圖／Hotspot：** `docs/codeGraphic.html`（正向／負向／Case→窗口）；原則見 EOS `documentation.md` §流程案例圖。
 
-**L1 劇情（API／UI 共用）：** SAGA-001／002、TCC-002、TRADE-001。人看：`http://localhost:8093/test/runner.html`。
+**L1 劇情（API／UI 共用）：** SAGA-001／002、TCC-002（含預留票終態）、TCC-001、TRADE-001、DASH-001。UI 另跑 DASH-002／003（iframe 實際操作主畫面）。人看：`http://localhost:8093/test/runner.html`。
 
 ### 證據欄範例（`EOS-LOOP-RELEASE`）
 
@@ -70,7 +81,7 @@
 啟動: .\gradlew.bat bootRun
 埠: 8093
 探活: health=UP  UI=200
-劇情: SAGA-001=COMPLETED/90000 ; SAGA-002=COMPENSATED/100000 ; TCC-002=COMPENSATED/100000 ; TRADE-001=404
+劇情: SAGA-001=COMPLETED/90000/CONFIRMED ; SAGA-002=COMPENSATED/100000/NO_TICKET ; TCC-002=COMPENSATED/100000/CANCELLED ; TCC-001=unknown=NO_TICKET ; TRADE-001=404 ; DASH-001=assets=200
 UI automation: PASS
 時間: <本地完成時刻>
 ```

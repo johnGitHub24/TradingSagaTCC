@@ -419,6 +419,32 @@ sequenceDiagram
         </div>
       </div>
 
+      <div class="case-card">
+        <h3>TCC-001 · 預留票查詢</h3>
+        <div class="case-flow">
+          <div class="step"><span class="lbl">1 · Fixture</span><span class="val">沿用 SAGA-001／002、TCC-002 下單</span></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">2 · Method</span><code>AccountQueryService.getReservation</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">3 · 單元</span><code>AccountQueryServiceTest</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">4 · 整合</span><code>reservation_unknown_noTicket</code>＋三情境終態斷言</div>
+        </div>
+      </div>
+
+      <div class="case-card">
+        <h3>DASH-001～003 · 三方狀態機 Dashboard</h3>
+        <div class="case-flow">
+          <div class="step"><span class="lbl">1 · 模型</span><code>dashboard.js</code> <code>buildLanes</code> <code>buildTimeline</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">2 · 單元</span><code>static/test/dashboard.spec.js</code>（Node＋瀏覽器）</div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">3 · 整合</span><code>dashboardAssets_served</code></div>
+          <span class="arrow">→</span>
+          <div class="step"><span class="lbl">4 · UI Smoke</span>DASH-002 三情境區塊／DASH-003 導航・重播</div>
+        </div>
+      </div>
+
       <h3>總表（可捲動複製）</h3>
       <table class="role big">
         <thead>
@@ -467,9 +493,23 @@ sequenceDiagram
             <td><code>AccountQueryServiceTest</code></td>
             <td><code>getAccount_seed_200</code></td>
           </tr>
+          <tr>
+            <td><strong>TCC-001</strong></td>
+            <td>（沿用三情境 fixture）</td>
+            <td><code>getReservation</code></td>
+            <td><code>AccountQueryServiceTest</code></td>
+            <td><code>reservation_unknown_noTicket</code></td>
+          </tr>
+          <tr>
+            <td><strong>DASH-001</strong></td>
+            <td>—</td>
+            <td><code>buildLanes</code> <code>buildTimeline</code></td>
+            <td><code>dashboard.spec.js</code></td>
+            <td><code>dashboardAssets_served</code></td>
+          </tr>
         </tbody>
       </table>
-      <p class="hotspot">L1 Smoke：SAGA-001／002、TCC-002、TRADE-001（見 <code>docs/testing.md</code>）。</p>
+      <p class="hotspot">L1 Smoke：SAGA-001／002、TCC-002（含預留票）、TCC-001、TRADE-001、DASH-001；UI 另跑 DASH-002／003（見 <code>docs/testing.md</code>）。</p>
       <p class="note">契約變 → fixture JSON＋單元＋整合＋本 Tab 成對更新。六 Case 擠在一張 Mermaid 會被 SVG 縮到看不清，故改卡片＋大表。</p>
     </section>
 
@@ -546,7 +586,7 @@ flowchart LR
 | [docs/狀態對照-Saga-TCC-訂單.md](docs/狀態對照-Saga-TCC-訂單.md) | **Saga／預留票／訂單** 三組狀態差異與逐步對照 |
 | [docs/codeGraphic.html](docs/codeGraphic.html) | Tab 式架構圖：**正向／負向／Case→Hotspot**（非權威） |
 | [docs/swagger.html](docs/swagger.html) | API（Swagger UI） |
-| [docs/testing.md](docs/testing.md) | Case／check／DoD／**Runtime Smoke L0～L1** |
+| [docs/testing.md](docs/testing.md) | Case／check／DoD／**Runtime Smoke L0～L1**（含 Dashboard DASH-001～003） |
 | [docs/graph-routing.md](docs/graph-routing.md) | **最小 Graph**（單 Agent N/A；Release 編排） |
 | [docs/資料庫設計.md](docs/資料庫設計.md) | 雙庫表 |
 | [CLAUDE.md](CLAUDE.md) | AI／工程薄規則（繼承 EOS） |
@@ -575,11 +615,13 @@ flowchart LR
 2. **餘額不足** — Saga 補償，餘額不變
 3. **故意失敗** — TCC Cancel，餘額還原
 
+下單後看 **三方狀態機 Dashboard**：Saga 流程／訂單結果／帳戶 TCC 預留票三條「階段一 → 階段二 → 終態分岔」圖像區塊（中文＋代碼），終態後自動慢動作重播；時間軸點一列可定格，點訂單列可回看舊交易。
+
 IntelliJ：Gradle `bootRun`（**不要**對 `TradingSagaTccApplication` 綠箭頭）。
 
 | URL | 說明 |
 |-----|------|
-| http://localhost:8093/ | 練習前台 |
+| http://localhost:8093/ | 練習前台＋三方狀態機 Dashboard |
 | http://localhost:8093/test/runner.html | L1 UI Smoke（RUN TESTING） |
 | http://localhost:8093/swagger-ui.html | OpenAPI |
 | http://localhost:8093/h2-console | H2（先連 order JDBC，再改連 account） |
@@ -621,6 +663,7 @@ H2 JDBC：
 - 本機 **內嵌 Kafka**（`bootRun` 不必 Docker）
 - 訂單庫 Outbox → Kafka command；帳戶 Consumer 做 TCC；事件回訂單庫完成或補償
 - 靜態 Vue 前台與後端同埠（`:8093`），可練成功／餘額不足／故意失敗三條劇情
+- 三方狀態機 Dashboard：Saga／訂單／TCC 預留票以「階段一 → 階段二 → 終態分岔」圖像區塊（中文＋代碼）呈現，附時間軸與慢動作重播
 - 單元＋整合成對 Case；驗證入口 `.\scripts\check.ps1`
 
 ### 不做（本版）
@@ -679,6 +722,7 @@ HTTP：請求合法即 **202**（Saga 已建）；終態靠輪詢 `GET /api/v1/s
 | GET | `/api/v1/trades/{orderId}` | 單筆 |
 | GET | `/api/v1/sagas/{sagaId}` | Saga＋步驟 |
 | GET | `/api/v1/accounts/{accountId}` | 餘額 |
+| GET | `/api/v1/tcc/reservations/{sagaId}` | 預留票狀態（無票 `exists=false`，一律 200） |
 | POST | `/api/v1/accounts/{accountId}/reset` | 還原種子（練習用） |
 | GET | `/api/v1/events` | 記憶體 Kafka 軌跡 |
 | GET | `/api/v1/demo/state` | 前台一次拉齊 |
@@ -691,10 +735,14 @@ HTTP：請求合法即 **202**（Saga 已建）；終態靠輪詢 `GET /api/v1/s
 | SAGA-002 | 帳戶不足時領域拒絕 Try | POST 超額 → COMPENSATED，帳戶不變 | 餘額不足 |
 | TCC-002 | Try 後 Cancel 還原 available | `forceFail=true` → COMPENSATED，帳戶還原 | 故意失敗 |
 | TRADE-001 | 查單不存在丟 404 語意 | GET 未知訂單 404 | 錯誤路徑 |
+| TRADE-002 | 框架例外不落兜底 500 | POST 壞 JSON → 400；DELETE `/api/v1/trades` → 405＋Allow | 錯誤路徑 |
 | ACCOUNT-001 | 查得到種子帳戶 | GET ACC-001 200 | 查餘額 |
 | OUTBOX-001 | append 後 unpublished | 下單後 command topic 有訊息 | Outbox→Kafka |
+| TCC-001 | 有票投影 state；無票回 exists=false | 三情境終態 CONFIRMED／無票／CANCELLED；未知 sagaId 200 | 預留票查詢 |
+| DASH-001 | `dashboard.js` 狀態推導 11 條規格（Node＋瀏覽器） | 靜態 Dashboard 資源 200 含標記 | 圖像化狀態機 |
 
-TCC 成功 Confirm 由 **SAGA-001** 覆蓋（不另開重複 HTTP Case）。
+TCC 成功 Confirm 由 **SAGA-001** 覆蓋（不另開重複 HTTP Case）。  
+UI 層專屬（Runtime Smoke，不進 check）：**DASH-002** 主畫面三情境區塊狀態、**DASH-003** 導航／定格／慢動作重播。
 
 ## 8. 驗證
 
@@ -738,7 +786,10 @@ OpenAPI：`/swagger-ui.html`、`/v3/api-docs`
 | price | 必填、> 0 |
 | forceFail | 可省略，預設 false；true 時帳戶 Confirm 改走 Cancel |
 
-驗證失敗 → **422** `{ error, message, fieldErrors }`。
+驗證失敗 → **422** `{ error, message, fieldErrors }`。  
+body 不是合法 JSON（語法錯、型別轉不過去）→ **400**，`message` 固定為 `Malformed JSON request body`。
+
+`amount` = quantity × price，以 HALF_UP 捨入到 **4 位小數**（與 DB 欄位 scale 一致）；202 回應、Kafka 命令與 DB 三處金額相同。
 
 ## GET /api/v1/trades
 
@@ -789,6 +840,21 @@ OpenAPI：`/swagger-ui.html`、`/v3/api-docs`
 
 將指定帳戶還原為 available=100000、frozen=0（練習重複跑劇情）。**200** 帳戶 DTO；不存在 **404**。
 
+## GET /api/v1/tcc/reservations/{sagaId}
+
+帳戶庫 TCC 預留票（Case TCC-001；前台 Dashboard 的 TCC 狀態機）。**一律 200**：查無票＝`exists=false`（Try 尚未執行，或 Try 失敗根本不寫票），不是 404。
+
+```json
+{ "sagaId": "...", "exists": true, "state": "CONFIRMED", "accountId": "ACC-001", "amount": 10000.0000, "createdAt": "..." }
+```
+
+| state | 意義 |
+|-------|------|
+| `TRYING` | 已凍結（available → frozen） |
+| `CONFIRMED` | 已扣款 |
+| `CANCELLED` | 已退回 |
+| `null`（`exists=false`） | 無票 |
+
 ## GET /api/v1/events
 
 Kafka 軌跡（記憶體 ring，最多 100 筆，新到舊）。
@@ -811,6 +877,14 @@ Kafka 軌跡（記憶體 ring，最多 100 筆，新到舊）。
   "message": "..."
 }
 ```
+
+| 狀態 | 情境 |
+|------|------|
+| 400 | body 不是合法 JSON |
+| 404 | 訂單／Saga／帳戶不存在；靜態資源不存在 |
+| 405 | 路徑存在但 HTTP 方法不支援（回應附 `Allow` header） |
+| 422 | `@Valid` 驗證失敗（多 `fieldErrors`） |
+| 500 | 其他未預期錯誤（訊息固定，不外洩內部細節） |
 </script>
   <script type="text/markdown" data-doc="architecture" data-src="architecture.md">
 # 架構說明
@@ -843,7 +917,9 @@ outbox_events
 
 | 角色 | Class | 關鍵 function |
 |------|-------|----------------|
-| Entry UI | `app.js` | `place`／`pollSaga`／`reportOutcome` |
+| Entry UI | `app.js` | `place`／`pollSaga`／`reportOutcome`／`startReplay`／`inspectOrder` |
+| Dashboard 模型 | `dashboard.js`（純函式） | `liveSnapshot`／`buildLanes`／`buildVerdict`／`buildTimeline` |
+| 預留票查詢 | `TccReservationController` | `get` → `AccountQueryService.getReservation`（唯讀帳戶庫） |
 | HTTP | `TradeController` | `place` |
 | 編排起點 | `SagaOrchestrator` | `start` |
 | Outbox | `OutboxRelayJob`／`OutboxPublisherService` | `tick`／`append`／`publishPending`（**發件匣**，見 [outbox-發件匣.md](outbox-發件匣.md)） |
@@ -942,7 +1018,7 @@ Controller → Service (@Transactional 指定 order 或 account TM) → Reposito
 |----|------|----------|
 | trade_orders | 訂單 | PK order_id |
 | saga_instances | Saga 進度 | PK saga_id |
-| saga_steps | 時間軸 | PK id，索引 saga_id |
+| saga_steps | 時間軸 | PK id，索引 `idx_saga_steps_saga_id`（saga_id；`SagaStep` 的 `@Table(indexes=…)`） |
 | outbox_events | **發件匣**（待送 Kafka 的信） | `published_at` NULL＝待發；非 NULL＝已寄出 |
 
 > **發件匣語意：** 與訂單／Saga 同交易寫入＝投遞進匣；`OutboxRelayJob` 定時寄出＝郵差。  
@@ -1009,17 +1085,32 @@ Controller → Service (@Transactional 指定 order 或 account TM) → Reposito
 | OUTBOX-001 | `trade/OUTBOX-001-RESERVE.json` | Outbox 軌跡 |
 | ACCOUNT-001 | `account/ACCOUNT-001-SEED.json` | 種子餘額期望 |
 | TRADE-001 | （無 body；GET 404） | 未知訂單 |
+| TRADE-002 | （inline 壞 JSON／DELETE） | 400／405 錯誤形狀 |
 
 ## Case（單元 ↔ 整合成對）
 
 | Case | 單元 | 整合 |
 |------|------|------|
-| SAGA-001 | `SagaOrchestratorTest`、`AccountTest` Try-Confirm、`AccountTccServiceTest` confirm | POST fixture → COMPLETED／available 90000 |
-| SAGA-002 | `AccountTest` 不足、`AccountTccServiceTest` false、`OrderMarkFailedActionTest` | POST fixture → COMPENSATED／餘額不變 |
-| TCC-002 | `AccountTest` Try-Cancel、`AccountTccServiceTest` forceFail | forceFail fixture → COMPENSATED／餘額還原 |
-| TRADE-001 | `TradeQueryServiceTest`、`GlobalExceptionHandlerTest` | GET 未知訂單 404 |
+| SAGA-001 | `SagaOrchestratorTest`、`TradeOrderTest` 金額 scale 4、`AccountTest` Try-Confirm、`AccountTccServiceTest` confirm、`AccountCommandHandlerTest` RESERVED／CONFIRMED、`SagaStatusTest` 正向 | POST fixture → COMPLETED／available 90000／本次 sagaId 軌跡含 RESERVE_FUNDS＋FUNDS_CONFIRMED |
+| SAGA-002 | `AccountTest` 不足、`AccountTccServiceTest` false、`AccountCommandHandlerTest` FAILED、`OrderMarkFailedActionTest`、`SagaStatusTest` 補償 | POST fixture → COMPENSATED／餘額不變 |
+| TCC-002 | `AccountTest` Try-Cancel、`AccountTccServiceTest` forceFail、`AccountCommandHandlerTest` CANCELLED、`OrderMarkFailedActionTest`、`SagaStatusTest` 補償 | forceFail fixture → COMPENSATED／餘額還原 |
+| TRADE-001 | `TradeQueryServiceTest`、`GlobalExceptionHandlerTest` 404 | GET 未知訂單 404 |
+| TRADE-002 | `GlobalExceptionHandlerTest` 400／405 | POST 壞 JSON → 400；DELETE `/api/v1/trades` → 405＋Allow |
 | ACCOUNT-001 | `AccountQueryServiceTest` | GET ACC-001 200（對照 seed JSON） |
-| OUTBOX-001 | `OutboxPublisherServiceTest`、`SagaOrchestratorTest` | events 含 `RESERVE_FUNDS` |
+| OUTBOX-001 | `OutboxPublisherServiceTest`、`SagaOrchestratorTest` | 本次 sagaId 軌跡含 `RESERVE_FUNDS`，並等到 COMPLETED |
+| TCC-001 | `AccountQueryServiceTest` 有票／無票 | `GET /api/v1/tcc/reservations/{sagaId}`：SAGA-001→`CONFIRMED`、SAGA-002→`exists=false`、TCC-002→`CANCELLED`；未知 sagaId→200 `exists=false` |
+| DASH-001 | `static/test/dashboard.spec.js`（11 條；Node `docs/ui-smoke/run-dashboard-unit.mjs`＋瀏覽器 runner 同一份） | `index.html`／`dashboard.js`／`dashboard.spec.js` 200 且含 Dashboard 標記 |
+
+**UI 層專屬（Runtime Smoke，不進 check）：**
+
+| Case | 驗什麼 | 在哪跑 |
+|------|--------|--------|
+| DASH-002 | 主畫面點 SAGA-001／SAGA-002／TCC-002 按鈕 → 三條 lane 的 `data-state`、每個區塊 `data-status`、中文「目前」標籤、總結色、時間軸列數、available | `/test/runner.html` iframe（headless 同） |
+| DASH-003 | 點訂單列切換交易、時間軸定格第 1 格、回到即時、慢動作重播經過 STARTED→ACCOUNT_TRYING→ACCOUNT_CONFIRMING→COMPLETED、導航列捲動 | 同上 |
+
+**Dashboard JS 單元：** 純函式不需 bootRun，`node docs/ui-smoke/run-dashboard-unit.mjs` → `ALL_DASH_UNIT_OK`（`run-ui-smoke.ps1` 開瀏覽器前先跑）。Gate 仍不要求 Node。
+
+**整合測試隔離：** 同一類別共用 Spring Context，記憶體 Kafka 軌跡不會清空。軌跡斷言一律以 JsonPath `$[?(@.sagaId == '…')]` 篩本次 sagaId；每個下單 Test 都等 Saga 終態才結束，避免背景流程跨 Test 扣款。
 
 ## DoD
 
@@ -1043,7 +1134,7 @@ Controller → Service (@Transactional 指定 order 或 account TM) → Reposito
 **Graph 路由：** `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`）。  
 **流程案例圖／Hotspot：** `docs/codeGraphic.html`（正向／負向／Case→窗口）；原則見 EOS `documentation.md` §流程案例圖。
 
-**L1 劇情（API／UI 共用）：** SAGA-001／002、TCC-002、TRADE-001。人看：`http://localhost:8093/test/runner.html`。
+**L1 劇情（API／UI 共用）：** SAGA-001／002、TCC-002（含預留票終態）、TCC-001、TRADE-001、DASH-001。UI 另跑 DASH-002／003（iframe 實際操作主畫面）。人看：`http://localhost:8093/test/runner.html`。
 
 ### 證據欄範例（`EOS-LOOP-RELEASE`）
 
@@ -1052,7 +1143,7 @@ Controller → Service (@Transactional 指定 order 或 account TM) → Reposito
 啟動: .\gradlew.bat bootRun
 埠: 8093
 探活: health=UP  UI=200
-劇情: SAGA-001=COMPLETED/90000 ; SAGA-002=COMPENSATED/100000 ; TCC-002=COMPENSATED/100000 ; TRADE-001=404
+劇情: SAGA-001=COMPLETED/90000/CONFIRMED ; SAGA-002=COMPENSATED/100000/NO_TICKET ; TCC-002=COMPENSATED/100000/CANCELLED ; TCC-001=unknown=NO_TICKET ; TRADE-001=404 ; DASH-001=assets=200
 UI automation: PASS
 時間: <本地完成時刻>
 ```
@@ -1392,10 +1483,12 @@ Kafka 可能重送同一則事件，三邊各自防重：
 
 ## 8. 怎麼自己觀察
 
-1. `bootRun` 後開 http://localhost:8093/
+1. `bootRun` 後開 http://localhost:8093/ —— **三方狀態機 Dashboard** 以「階段一 → 階段二 → … → 終態分岔（成功／補償）」圖像區塊同時畫出三組狀態（中文＋代碼）；
+   終態後自動慢動作重播，時間軸可點任一格定格（例如第 4 格：預留票已凍結、Saga 仍「凍結資金中」，即本節「暫時對不上」）。點訂單列可回看舊交易。
 2. 下單後記下 `sagaId`，查：
    - `GET /api/v1/sagas/{sagaId}` — Saga 狀態與步驟軌跡
    - `GET /api/v1/trades/{orderId}` — 訂單狀態
+   - `GET /api/v1/tcc/reservations/{sagaId}` — 預留票狀態（無票回 `exists=false`）
    - `GET /api/v1/accounts/ACC-001` — available／frozen
    - `GET /api/v1/events` — Kafka 走過哪些訊息 type
 3. 分別用一般下單、超額下單、`forceFail=true` 跑三個情境，對照第 4 節的表。
@@ -1411,6 +1504,7 @@ Kafka 可能重送同一則事件，三邊各自防重：
 | 事件推進 | `messaging/OrderSagaEventHandler.java` |
 | 補償 | `saga/OrderMarkFailedAction.java` |
 | 前台判讀 | `static/app.js` 的 `pollSaga`、`reportOutcome` |
+| 前台 Dashboard | `static/dashboard.js`（三條 lane 推導、時間軸重建）；規格 `static/test/dashboard.spec.js` |
 | 延伸閱讀 | [outbox-發件匣.md](outbox-發件匣.md)（命令怎麼寄出）、[codeGraphic.html](codeGraphic.html)（正負向流程圖） |
 
 ## 10. 一句話複習

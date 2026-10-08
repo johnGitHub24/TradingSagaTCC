@@ -2,7 +2,9 @@ package com.trading.saga.account;
 
 import com.trading.saga.account.domain.Account;
 import com.trading.saga.account.dto.AccountResponse;
+import com.trading.saga.account.dto.TccReservationResponse;
 import com.trading.saga.account.infrastructure.AccountRepository;
+import com.trading.saga.account.infrastructure.TccReservationRepository;
 import com.trading.saga.common.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +26,15 @@ public class AccountQueryService implements AccountLookup {
     public static final BigDecimal SEED_AVAILABLE = new BigDecimal("100000");
 
     private final AccountRepository accountRepository;
+    private final TccReservationRepository reservationRepository;
 
     /**
-     * 【職責】注入帳戶 Repository（建構子注入）。
+     * 【職責】注入帳戶與預留票 Repository（建構子注入；兩者同屬帳戶庫）。
      */
-    public AccountQueryService(AccountRepository accountRepository) {
+    public AccountQueryService(AccountRepository accountRepository,
+                               TccReservationRepository reservationRepository) {
         this.accountRepository = accountRepository;
+        this.reservationRepository = reservationRepository;
     }
 
     /**
@@ -59,6 +64,24 @@ public class AccountQueryService implements AccountLookup {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountId));
         return AccountResponse.from(account);
+    }
+
+    /**
+     * 【職責】查詢某 Saga 的 TCC 預留票狀態（Case TCC-001；前台 Dashboard 的 TCC 狀態機）。
+     * 【概念】查無票回 {@link TccReservationResponse#none}（200），不拋 404：
+     * 「無票」代表 Try 尚未執行或 Try 失敗，本身就是要畫出來的狀態。
+     * <pre>
+     * accountQueryService.getReservation(sagaId); // exists=true, state=CONFIRMED
+     * </pre>
+     *
+     * @param sagaId 流程 id（預留票主鍵）
+     * @return 預留票 DTO；無票時 exists=false
+     */
+    @Transactional(value = "accountTransactionManager", readOnly = true)
+    public TccReservationResponse getReservation(String sagaId) {
+        return reservationRepository.findById(sagaId)
+                .map(TccReservationResponse::from)
+                .orElseGet(() -> TccReservationResponse.none(sagaId));
     }
 
     /**

@@ -28,7 +28,9 @@ outbox_events
 
 | 角色 | Class | 關鍵 function |
 |------|-------|----------------|
-| Entry UI | `app.js` | `place`／`pollSaga`／`reportOutcome` |
+| Entry UI | `app.js` | `place`／`pollSaga`／`reportOutcome`／`startReplay`／`inspectOrder` |
+| Dashboard 模型 | `dashboard.js`（純函式） | `liveSnapshot`／`buildLanes`／`buildVerdict`／`buildTimeline` |
+| 預留票查詢 | `TccReservationController` | `get` → `AccountQueryService.getReservation`（唯讀帳戶庫） |
 | HTTP | `TradeController` | `place` |
 | 編排起點 | `SagaOrchestrator` | `start` |
 | Outbox | `OutboxRelayJob`／`OutboxPublisherService` | `tick`／`append`／`publishPending`（**發件匣**，見 [outbox-發件匣.md](outbox-發件匣.md)） |

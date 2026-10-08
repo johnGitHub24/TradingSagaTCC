@@ -38,6 +38,14 @@ function Get-Available {
     return [decimal]$a.available
 }
 
+function Assert-Reservation {
+    param([string]$SagaId, [bool]$Exists, [string]$State, [string]$CaseId)
+    $r = Invoke-RestMethod -Uri ('{0}/tcc/reservations/{1}' -f $api, $SagaId)
+    if ([bool]$r.exists -ne $Exists) { throw "$CaseId TCC-001 exists expected $Exists got $($r.exists)" }
+    if ($Exists -and $r.state -ne $State) { throw "$CaseId TCC-001 state expected $State got $($r.state)" }
+    if ($Exists) { return $r.state } else { return 'NO_TICKET' }
+}
+
 function Place-Trade {
     param([int]$Qty, [int]$Price, [bool]$ForceFail)
     $body = @{
@@ -66,29 +74,47 @@ Write-Host 'UI=200' -ForegroundColor Green
 
 $results = @{}
 
+# DASH-001: Dashboard static assets reachable with markers
+$dashJs = Invoke-WebRequest -Uri ('{0}/dashboard.js' -f $BaseUrl) -UseBasicParsing -TimeoutSec 5
+if ($dashJs.StatusCode -ne 200 -or $dashJs.Content -notmatch 'export function buildLanes') {
+    throw 'DASH-001 /dashboard.js missing buildLanes'
+}
+if ($ui.Content -notmatch 'data-testid="sm-dashboard"') { throw 'DASH-001 index.html missing sm-dashboard' }
+$spec = Invoke-WebRequest -Uri ('{0}/test/dashboard.spec.js' -f $BaseUrl) -UseBasicParsing -TimeoutSec 5
+if ($spec.StatusCode -ne 200) { throw 'DASH-001 /test/dashboard.spec.js not 200' }
+$results['DASH-001'] = 'assets=200'
+Write-Host 'DASH-001 PASS (dashboard assets)' -ForegroundColor Green
+
 Reset-Account | Out-Null
 $id = Place-Trade -Qty 1 -Price 10000 -ForceFail $false
 $s = Wait-SagaStatus -SagaId $id -Expect 'COMPLETED'
 $av = Get-Available
 if ($av -ne 90000) { throw "SAGA-001 available expected 90000 got $av" }
-$results['SAGA-001'] = "COMPLETED/$av"
-Write-Host "SAGA-001 PASS ($($s.status) available=$av)" -ForegroundColor Green
+$t1 = Assert-Reservation -SagaId $id -Exists $true -State 'CONFIRMED' -CaseId 'SAGA-001'
+$results['SAGA-001'] = "COMPLETED/$av/$t1"
+Write-Host "SAGA-001 PASS ($($s.status) available=$av reservation=$t1)" -ForegroundColor Green
 
 Reset-Account | Out-Null
 $id = Place-Trade -Qty 1 -Price 999999 -ForceFail $false
 $s = Wait-SagaStatus -SagaId $id -Expect 'COMPENSATED'
 $av = Get-Available
 if ($av -ne 100000) { throw "SAGA-002 available expected 100000 got $av" }
-$results['SAGA-002'] = "COMPENSATED/$av"
-Write-Host "SAGA-002 PASS ($($s.status) available=$av)" -ForegroundColor Green
+$t2 = Assert-Reservation -SagaId $id -Exists $false -State '' -CaseId 'SAGA-002'
+$results['SAGA-002'] = "COMPENSATED/$av/$t2"
+Write-Host "SAGA-002 PASS ($($s.status) available=$av reservation=$t2)" -ForegroundColor Green
 
 Reset-Account | Out-Null
 $id = Place-Trade -Qty 1 -Price 10000 -ForceFail $true
 $s = Wait-SagaStatus -SagaId $id -Expect 'COMPENSATED'
 $av = Get-Available
 if ($av -ne 100000) { throw "TCC-002 available expected 100000 got $av" }
-$results['TCC-002'] = "COMPENSATED/$av"
-Write-Host "TCC-002 PASS ($($s.status) available=$av)" -ForegroundColor Green
+$t3 = Assert-Reservation -SagaId $id -Exists $true -State 'CANCELLED' -CaseId 'TCC-002'
+$results['TCC-002'] = "COMPENSATED/$av/$t3"
+Write-Host "TCC-002 PASS ($($s.status) available=$av reservation=$t3)" -ForegroundColor Green
+
+$t0 = Assert-Reservation -SagaId 'no-such-saga' -Exists $false -State '' -CaseId 'TCC-001'
+$results['TCC-001'] = "unknown=$t0"
+Write-Host "TCC-001 PASS (unknown sagaId -> 200 exists=false)" -ForegroundColor Green
 
 try {
     Invoke-RestMethod -Uri ('{0}/trades/missing-order' -f $api) -ErrorAction Stop

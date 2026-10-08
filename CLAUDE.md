@@ -22,7 +22,8 @@
 
 - Domain: Kafka + 編排式 Saga + 帳戶 TCC + 補償；訂單 Outbox
 - 擴增點：`TccResource`／`CompensationAction`／`OutboxRelay`／`DomainEventConsumer`（雙庫邊界不變）
-- Case：SAGA-001／SAGA-002／TCC-002／TRADE-001／TRADE-002／ACCOUNT-001／OUTBOX-001（單元+整合成對）
+- Case：SAGA-001／SAGA-002／TCC-001／TCC-002／TRADE-001／TRADE-002／ACCOUNT-001／OUTBOX-001／DASH-001（單元+整合成對）；DASH-002／003 UI 層專屬（Runtime Smoke）
+- 前台 Dashboard：狀態推導純函式 `static/dashboard.js`（規格 `static/test/dashboard.spec.js`，Node `docs/ui-smoke/run-dashboard-unit.mjs`）
 - 架構：`docs/architecture.md`；DB：`docs/資料庫設計.md`；測試：`docs/testing.md`
 - API：[API規格書.md](API規格書.md)
 

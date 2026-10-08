@@ -15,6 +15,7 @@
 - 本機 **內嵌 Kafka**（`bootRun` 不必 Docker）
 - 訂單庫 Outbox → Kafka command；帳戶 Consumer 做 TCC；事件回訂單庫完成或補償
 - 靜態 Vue 前台與後端同埠（`:8093`），可練成功／餘額不足／故意失敗三條劇情
+- 三方狀態機 Dashboard：Saga／訂單／TCC 預留票以「階段一 → 階段二 → 終態分岔」圖像區塊（中文＋代碼）呈現，附時間軸與慢動作重播
 - 單元＋整合成對 Case；驗證入口 `.\scripts\check.ps1`
 
 ### 不做（本版）
@@ -73,6 +74,7 @@ HTTP：請求合法即 **202**（Saga 已建）；終態靠輪詢 `GET /api/v1/s
 | GET | `/api/v1/trades/{orderId}` | 單筆 |
 | GET | `/api/v1/sagas/{sagaId}` | Saga＋步驟 |
 | GET | `/api/v1/accounts/{accountId}` | 餘額 |
+| GET | `/api/v1/tcc/reservations/{sagaId}` | 預留票狀態（無票 `exists=false`，一律 200） |
 | POST | `/api/v1/accounts/{accountId}/reset` | 還原種子（練習用） |
 | GET | `/api/v1/events` | 記憶體 Kafka 軌跡 |
 | GET | `/api/v1/demo/state` | 前台一次拉齊 |
@@ -88,8 +90,11 @@ HTTP：請求合法即 **202**（Saga 已建）；終態靠輪詢 `GET /api/v1/s
 | TRADE-002 | 框架例外不落兜底 500 | POST 壞 JSON → 400；DELETE `/api/v1/trades` → 405＋Allow | 錯誤路徑 |
 | ACCOUNT-001 | 查得到種子帳戶 | GET ACC-001 200 | 查餘額 |
 | OUTBOX-001 | append 後 unpublished | 下單後 command topic 有訊息 | Outbox→Kafka |
+| TCC-001 | 有票投影 state；無票回 exists=false | 三情境終態 CONFIRMED／無票／CANCELLED；未知 sagaId 200 | 預留票查詢 |
+| DASH-001 | `dashboard.js` 狀態推導 11 條規格（Node＋瀏覽器） | 靜態 Dashboard 資源 200 含標記 | 圖像化狀態機 |
 
-TCC 成功 Confirm 由 **SAGA-001** 覆蓋（不另開重複 HTTP Case）。
+TCC 成功 Confirm 由 **SAGA-001** 覆蓋（不另開重複 HTTP Case）。  
+UI 層專屬（Runtime Smoke，不進 check）：**DASH-002** 主畫面三情境區塊狀態、**DASH-003** 導航／定格／慢動作重播。
 
 ## 8. 驗證
 

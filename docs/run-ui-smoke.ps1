@@ -56,6 +56,11 @@ try {
         throw 'Node.js required (node -v). Install Node or use .\docs\run-api-smoke.ps1 for L1.'
     }
 
+    # DASH-001 unit layer (pure JS, no server needed) - fail fast before browser
+    Write-Host 'DASH-001 dashboard model unit (Node)...' -ForegroundColor Cyan
+    & node (Join-Path $uiSmokeDir 'run-dashboard-unit.mjs')
+    if ($LASTEXITCODE -ne 0) { throw 'DASH-001 unit failed' }
+
     $healthUrl = '{0}/actuator/health' -f $BaseUrl.TrimEnd('/')
     $healthy = $false
     try {

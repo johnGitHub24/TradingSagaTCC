@@ -1,7 +1,10 @@
 package com.trading.saga.account;
 
 import com.trading.saga.account.domain.Account;
+import com.trading.saga.account.domain.TccReservation;
+import com.trading.saga.account.domain.TccState;
 import com.trading.saga.account.infrastructure.AccountRepository;
+import com.trading.saga.account.infrastructure.TccReservationRepository;
 import com.trading.saga.common.ResourceNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 /**
- * 【職責】帳戶查詢單元層，與 ACCOUNT-001 成對。
+ * 【職責】帳戶查詢單元層，與 ACCOUNT-001、TCC-001（預留票查詢）成對。
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AccountQueryService unit")
@@ -31,9 +34,13 @@ class AccountQueryServiceTest {
     @Mock
     private AccountRepository accountRepository;
 
+    /** 【概念】假的預留票 repository；TCC-001 用它模擬「有票」與「無票」。 */
+    @Mock
+    private TccReservationRepository reservationRepository;
+
     /**
-     * 【概念】真的 {@link AccountQueryService}：Mockito 呼叫它的建構子，把上面的假 repository 塞進去
-     * （等同手寫 {@code new AccountQueryService(accountRepository)}）；這裡沒有 Spring 容器參與。
+     * 【概念】真的 {@link AccountQueryService}：Mockito 呼叫它的建構子，把上面兩個假 repository 塞進去
+     * （等同手寫 {@code new AccountQueryService(accountRepository, reservationRepository)}）；這裡沒有 Spring 容器參與。
      */
     @InjectMocks
     private AccountQueryService queryService;
@@ -85,5 +92,38 @@ class AccountQueryServiceTest {
         assertThatThrownBy(() -> queryService.get("NOPE"))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("NOPE");
+    }
+
+    /**
+     * 【職責】TCC-001 正向：有預留票時投影出 state／amount（Dashboard TCC 狀態機的資料來源）。
+     */
+    @Test
+    @DisplayName("TCC-001: reservation exists → exists=true with state CONFIRMED")
+    void getReservation_exists() {
+        TccReservation reservation = TccReservation.trying("saga-1", "ACC-001", new BigDecimal("10000"));
+        reservation.markConfirmed();
+        given(reservationRepository.findById("saga-1")).willReturn(Optional.of(reservation));
+
+        var response = queryService.getReservation("saga-1");
+
+        assertThat(response.exists()).isTrue();
+        assertThat(response.state()).isEqualTo(TccState.CONFIRMED);
+        assertThat(response.accountId()).isEqualTo("ACC-001");
+        assertThat(response.amount()).isEqualByComparingTo("10000");
+    }
+
+    /**
+     * 【職責】TCC-001 無票：回 exists=false 而非拋例外（Try 尚未執行或 Try 失敗都是合法狀態）。
+     */
+    @Test
+    @DisplayName("TCC-001: no reservation → exists=false, no exception")
+    void getReservation_none() {
+        given(reservationRepository.findById("saga-x")).willReturn(Optional.empty());
+
+        var response = queryService.getReservation("saga-x");
+
+        assertThat(response.sagaId()).isEqualTo("saga-x");
+        assertThat(response.exists()).isFalse();
+        assertThat(response.state()).isNull();
     }
 }

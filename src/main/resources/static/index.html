@@ -7,123 +7,297 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet" />
   <style>
+    html { scroll-behavior: smooth; }
     body { background: #0f1419; color: #e6edf3; }
+    section { scroll-margin-top: 72px; }
     .card { background: #1a2332; border-color: #2d3a4f; color: #e6edf3; }
     .card-header { background: #243044; border-color: #2d3a4f; }
     .form-control, .form-select { background: #0f1419; color: #e6edf3; border-color: #2d3a4f; }
-    .table { color: #e6edf3; }
+    .table { color: #e6edf3; --bs-table-bg: transparent; --bs-table-color: #e6edf3; --bs-table-border-color: #2d3a4f; --bs-table-active-bg: #243044; --bs-table-active-color: #fff; }
     .table-light th { background: #243044; color: #e6edf3; border-color: #2d3a4f; }
     .muted { color: #8b9cb3; }
     .event-ok { color: #10b981; }
     .event-fail { color: #f59e0b; }
     pre { background: #0f1419; color: #c9d4e3; font-size: 0.8rem; }
+
+    /* ── 導航列 ── */
+    .eos-nav { background: rgba(15, 20, 25, .92); backdrop-filter: blur(6px); border-bottom: 1px solid #2d3a4f; }
+    .eos-nav .nav-link { color: #8b9cb3; border-radius: .4rem; padding: .35rem .7rem; }
+    .eos-nav .nav-link:hover { color: #e6edf3; background: #1a2332; }
+    .eos-nav .nav-link.active { color: #fff; background: #2563eb; }
+
+    /* ── Dashboard：總結列／圖例 ── */
+    .sm-verdict { border-radius: .5rem; padding: .65rem 1rem; font-weight: 600; }
+    .sm-verdict.tone-idle { background: #1e293b; color: #8b9cb3; }
+    .sm-verdict.tone-active { background: #1e3a8a; color: #dbeafe; }
+    .sm-verdict.tone-success { background: #14532d; color: #dcfce7; }
+    .sm-verdict.tone-warn { background: #78350f; color: #fef3c7; }
+    .sm-legend span { display: inline-flex; align-items: center; gap: .3rem; margin-right: .9rem; font-size: .78rem; color: #8b9cb3; }
+    .sm-legend i.sw { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
+    /* ── Lane（一條狀態機） ── */
+    .sm-lane { background: #131c28; border: 1px solid #2d3a4f; border-radius: .6rem; padding: .75rem .9rem 1rem; margin-bottom: .9rem; transition: box-shadow .3s; scroll-margin-top: 80px; }
+    .sm-lane-changed { box-shadow: 0 0 0 2px #38bdf8, 0 0 18px rgba(56, 189, 248, .45); }
+    .sm-lane-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
+    .sm-current { padding: .15rem .55rem; border-radius: 1rem; font-weight: 600; }
+    .sm-current code { color: inherit; opacity: .8; }
+    .sm-current.tone-idle { background: #1e293b; color: #8b9cb3; }
+    .sm-current.tone-active { background: #2563eb; color: #fff; }
+    .sm-current.tone-success { background: #16a34a; color: #fff; }
+    .sm-current.tone-warn { background: #d97706; color: #fff; }
+
+    /* ── 箭頭區塊（階段一 > 階段二 > …） ── */
+    .sm-track { display: flex; align-items: stretch; }
+    .sm-stage {
+      flex: 1 1 0; min-width: 0; position: relative; margin-right: -8px;
+      padding: .55rem 1.5rem .55rem 1.7rem; min-height: 118px;
+      clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%);
+      transition: background-color .35s, opacity .35s, color .35s;
+    }
+    .sm-track > .sm-stage:first-child { padding-left: 1rem; clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%); }
+    .sm-fork { flex: 1.25 1 0; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .sm-stage.sm-end {
+      flex: 1 0 auto; margin-right: 0; min-height: 56px; padding: .35rem .8rem .35rem 1.6rem;
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 16px 50%); border-radius: 0 .5rem .5rem 0;
+    }
+    .sm-no { font-size: .72rem; letter-spacing: .04em; opacity: .85; display: flex; justify-content: space-between; gap: .3rem; }
+    .sm-tag { font-size: .66rem; padding: 0 .4rem; border-radius: .6rem; background: rgba(0, 0, 0, .28); white-space: nowrap; }
+    .sm-zh { font-weight: 700; font-size: .98rem; margin-top: .15rem; }
+    .sm-code { font-family: ui-monospace, Consolas, monospace; font-size: .74rem; opacity: .85; }
+    .sm-code-inline { font-size: .7rem; color: inherit; opacity: .8; }
+    .sm-desc { font-size: .74rem; opacity: .8; margin-top: .15rem; }
+    .sm-end .sm-zh { font-size: .9rem; }
+
+    .st-todo { background: #1e293b; color: #64748b; }
+    .st-done { background: #0f766e; color: #ecfeff; }
+    .st-active { background: #2563eb; color: #fff; animation: sm-pulse 1.2s ease-in-out infinite; }
+    .st-warnActive { background: #d97706; color: #fff; animation: sm-pulse 1.2s ease-in-out infinite; }
+    .st-success { background: #16a34a; color: #fff; }
+    .st-warn { background: #b45309; color: #fff; }
+    .st-branch { background: repeating-linear-gradient(135deg, #9a3412, #9a3412 10px, #7c2d12 10px, #7c2d12 20px); color: #fff; }
+    .st-skip { background: repeating-linear-gradient(135deg, #1e293b, #1e293b 8px, #253247 8px, #253247 16px); color: #64748b; }
+    .st-dim { background: #1e293b; color: #64748b; opacity: .45; }
+    @keyframes sm-pulse { 50% { filter: brightness(1.35); } }
+
+    @media (max-width: 991.98px) {
+      .sm-track { flex-direction: column; }
+      .sm-stage, .sm-track > .sm-stage:first-child, .sm-stage.sm-end {
+        clip-path: none; border-radius: .5rem; margin: 0 0 6px 0; min-height: 0; padding: .5rem .8rem;
+      }
+    }
+
+    /* ── 時間軸 ── */
+    .tl-row { cursor: pointer; }
+    .tl-row:hover td { background: #243044; }
+    .tl-row.tl-current td { background: #1e3a8a; color: #fff; }
+    .tl-row.tl-current td .muted { color: #c7d2fe; }
+    .side-chip { font-size: .7rem; padding: .05rem .45rem; border-radius: .6rem; white-space: nowrap; }
+    .side-order { background: #1d4ed8; color: #fff; }
+    .side-kafka { background: #475569; color: #fff; }
+    .side-account { background: #0f766e; color: #fff; }
+    .side-live { background: #6d28d9; color: #fff; }
+    .order-row { cursor: pointer; }
   </style>
 </head>
 <body>
-<div id="app" class="container py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h1 class="h3 mb-1">TradingSagaTCC</h1>
-      <p class="muted mb-0">雙庫邊界 + Kafka Outbox + Saga 編排 + 帳戶 TCC + 補償</p>
-    </div>
-    <div>
-      <a href="/test/runner.html" class="btn btn-sm btn-outline-success me-1">UI Smoke</a>
-      <a href="/swagger-ui.html" class="btn btn-sm btn-outline-secondary me-1" target="_blank">API</a>
-      <a href="/h2-console" class="btn btn-sm btn-outline-secondary me-1" target="_blank">H2</a>
-      <button class="btn btn-sm btn-outline-info" @click="refresh" :disabled="loading">
-        <i class="bi bi-arrow-clockwise"></i> 重新整理
-      </button>
-    </div>
-  </div>
-
-  <div v-if="message" class="alert" :class="messageType">{{ message }}</div>
-
-  <div class="row g-4">
-    <div class="col-lg-4">
-      <div class="card mb-3">
-        <div class="card-header">帳戶 ACC-001</div>
-        <div class="card-body">
-          <p class="mb-1">available <strong>{{ account.available ?? '—' }}</strong></p>
-          <p class="mb-1">frozen <strong>{{ account.frozen ?? '—' }}</strong></p>
-          <p class="mb-3">total <strong>{{ account.total ?? '—' }}</strong></p>
-          <button class="btn btn-sm btn-outline-warning" @click="resetAccount" :disabled="loading">還原種子 100000</button>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">下單（啟動 Saga）</div>
-        <div class="card-body">
-          <div class="mb-2">
-            <label class="form-label">數量</label>
-            <input v-model.number="form.quantity" type="number" min="0.0001" step="1" class="form-control" />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">價格</label>
-            <input v-model.number="form.price" type="number" min="0.0001" step="1" class="form-control" />
-          </div>
-          <button class="btn btn-success w-100 mb-2" @click="place(false)" :disabled="loading">
-            成功路徑（SAGA-001）
-          </button>
-          <button class="btn btn-warning w-100 mb-2" @click="placeInsufficient" :disabled="loading">
-            餘額不足（SAGA-002）
-          </button>
-          <button class="btn btn-danger w-100" @click="place(true)" :disabled="loading">
-            故意失敗補償（TCC-002）
-          </button>
-          <p class="muted small mt-3 mb-0">成功：1×10000。不足：1×999999。故意失敗：Try 後 Cancel。</p>
-        </div>
+<div id="app">
+  <nav class="navbar sticky-top eos-nav py-2" data-testid="main-nav">
+    <div class="container d-flex flex-wrap align-items-center gap-2">
+      <a class="navbar-brand text-light fw-bold me-2" href="#dashboard" @click.prevent="scrollTo('dashboard')">
+        <i class="bi bi-diagram-3-fill text-info"></i> TradingSagaTCC
+      </a>
+      <ul class="nav flex-wrap me-auto">
+        <li class="nav-item"><a class="nav-link" :class="{ active: activeSection === 'console' }" href="#console" data-testid="nav-console" @click.prevent="scrollTo('console')"><i class="bi bi-joystick"></i> 下單操作</a></li>
+        <li class="nav-item"><a class="nav-link" :class="{ active: activeSection === 'dashboard' }" href="#dashboard" data-testid="nav-dashboard" @click.prevent="scrollTo('dashboard')"><i class="bi bi-grid-1x2"></i> 狀態機 Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" :class="{ active: activeSection === 'timeline' }" href="#timeline" data-testid="nav-timeline" @click.prevent="scrollTo('timeline')"><i class="bi bi-clock-history"></i> 時間軸</a></li>
+        <li class="nav-item"><a class="nav-link" :class="{ active: activeSection === 'orders' }" href="#orders" data-testid="nav-orders" @click.prevent="scrollTo('orders')"><i class="bi bi-list-ul"></i> 訂單</a></li>
+        <li class="nav-item"><a class="nav-link" :class="{ active: activeSection === 'trail' }" href="#trail" data-testid="nav-trail" @click.prevent="scrollTo('trail')"><i class="bi bi-broadcast"></i> Kafka 軌跡</a></li>
+      </ul>
+      <div>
+        <a href="/test/runner.html" class="btn btn-sm btn-outline-success me-1">UI Smoke</a>
+        <a href="/swagger-ui.html" class="btn btn-sm btn-outline-secondary me-1" target="_blank">API</a>
+        <a href="/h2-console" class="btn btn-sm btn-outline-secondary me-1" target="_blank">H2</a>
+        <button class="btn btn-sm btn-outline-info" @click="refresh" :disabled="loading" data-testid="btn-refresh">
+          <i class="bi bi-arrow-clockwise"></i> 重新整理
+        </button>
       </div>
     </div>
+  </nav>
 
-    <div class="col-lg-8">
-      <div class="card mb-3">
-        <div class="card-header">目前 Saga</div>
-        <div class="card-body">
-          <p v-if="!currentSaga" class="muted mb-0">尚未下單。點左側按鈕後會輪詢終態。</p>
-          <div v-else>
-            <p>sagaId <code>{{ currentSaga.sagaId }}</code></p>
-            <p>Saga <span class="badge" :class="sagaBadge">{{ currentSaga.status }}</span>
-              <span class="muted mx-1">／</span>
-              訂單 <span class="badge" :class="orderBadge">{{ currentOrder?.status ?? '—' }}</span>
-            </p>
-            <p class="muted small">成功＝Saga <code>COMPLETED</code>＋訂單 <code>FILLED</code>；補償＝Saga <code>COMPENSATED</code>＋訂單 <code>FAILED</code>（勿把訂單 FAILED 當成扣款失敗）。</p>
-            <ol class="mb-0">
-              <li v-for="(s, i) in currentSaga.steps" :key="i">
-                <strong>{{ s.name }}</strong> — {{ s.detail }}
-              </li>
-            </ol>
+  <div class="container py-3">
+    <p class="muted mb-3">雙庫邊界 + Kafka Outbox + Saga 編排 + 帳戶 TCC + 補償</p>
+    <div v-if="message" class="alert" :class="messageType" data-testid="toast">{{ message }}</div>
+
+    <!-- ① 下單操作 -->
+    <section id="console" class="card mb-3">
+      <div class="card-header"><i class="bi bi-joystick"></i> 下單操作（啟動 Saga）</div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-lg-3">
+            <div class="small muted">帳戶 ACC-001</div>
+            <div>available <strong data-testid="acc-available">{{ account.available ?? '—' }}</strong></div>
+            <div class="small">frozen <strong>{{ account.frozen ?? '—' }}</strong> · total <strong>{{ account.total ?? '—' }}</strong></div>
+            <button class="btn btn-sm btn-outline-warning mt-1" @click="resetAccount" :disabled="loading" data-testid="btn-reset">還原種子 100000</button>
+          </div>
+          <div class="col-6 col-lg-2">
+            <label class="form-label small mb-1">數量</label>
+            <input v-model.number="form.quantity" type="number" min="0.0001" step="1" class="form-control form-control-sm" />
+          </div>
+          <div class="col-6 col-lg-2">
+            <label class="form-label small mb-1">價格</label>
+            <input v-model.number="form.price" type="number" min="0.0001" step="1" class="form-control form-control-sm" />
+          </div>
+          <div class="col-lg-5 d-flex flex-wrap gap-2">
+            <button class="btn btn-success flex-fill" @click="place(false)" :disabled="loading" data-testid="btn-saga-001">
+              成功路徑（SAGA-001）
+            </button>
+            <button class="btn btn-warning flex-fill" @click="placeInsufficient" :disabled="loading" data-testid="btn-saga-002">
+              餘額不足（SAGA-002）
+            </button>
+            <button class="btn btn-danger flex-fill" @click="place(true)" :disabled="loading" data-testid="btn-tcc-002">
+              故意失敗補償（TCC-002）
+            </button>
+          </div>
+        </div>
+        <p class="muted small mt-2 mb-0">成功：1×10000。不足：1×999999。故意失敗：Try 後 Cancel。下單後 Dashboard 會即時更新，終態後自動慢動作重播。</p>
+      </div>
+    </section>
+
+    <!-- ② 狀態機 Dashboard -->
+    <section id="dashboard" class="card mb-3" data-testid="sm-dashboard"
+             :data-saga-id="currentSaga?.sagaId ?? ''" :data-replaying="replayIndex !== null ? 'true' : 'false'">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+          <i class="bi bi-grid-1x2"></i> 三方狀態機 Dashboard
+          <span v-if="currentSaga" class="muted small ms-2">sagaId <code>{{ currentSaga.sagaId.slice(0, 8) }}…</code></span>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-light" @click="scrollTo('lane-saga')">Saga 流程</button>
+            <button class="btn btn-outline-light" @click="scrollTo('lane-order')">訂單結果</button>
+            <button class="btn btn-outline-light" @click="scrollTo('lane-tcc')">TCC 資金</button>
+          </div>
+          <select v-model.number="replaySpeed" class="form-select form-select-sm w-auto" title="重播速度">
+            <option :value="500">0.5 秒／格</option>
+            <option :value="1000">1 秒／格</option>
+            <option :value="2000">2 秒／格</option>
+          </select>
+          <button class="btn btn-sm btn-info" @click="startReplay" :disabled="timeline.length === 0" data-testid="btn-replay">
+            <i class="bi bi-play-fill"></i> 慢動作重播
+          </button>
+          <button class="btn btn-sm btn-outline-info" @click="backToLive" :disabled="replayIndex === null" data-testid="btn-live">
+            <i class="bi bi-broadcast-pin"></i> 回到即時
+          </button>
+          <div class="form-check form-switch mb-0 small">
+            <input class="form-check-input" type="checkbox" id="autoReplay" v-model="autoReplay" />
+            <label class="form-check-label" for="autoReplay">完成後自動重播</label>
           </div>
         </div>
       </div>
-      <div class="card mb-3">
-        <div class="card-header">訂單</div>
-        <div class="table-responsive">
-          <table class="table table-sm mb-0">
-            <thead class="table-light">
-              <tr><th>訂單 status</th><th>amount</th><th>forceFail</th><th>orderId</th></tr>
-            </thead>
-            <tbody>
-              <tr v-if="orders.length === 0">
-                <td colspan="4" class="text-center muted py-3">尚無訂單</td>
-              </tr>
-              <tr v-for="o in orders" :key="o.orderId" :class="{ 'table-active': currentSaga && o.orderId === currentSaga.orderId }">
-                <td><span class="badge" :class="orderBadgeClass(o.status)">{{ o.status }}</span></td>
-                <td>{{ o.amount }}</td>
-                <td>{{ o.forceFail }}</td>
-                <td><code>{{ o.orderId.slice(0, 8) }}…</code></td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="card-body">
+        <div class="sm-verdict mb-2" :class="'tone-' + verdict.tone" data-testid="sm-verdict" :data-tone="verdict.tone">
+          <i class="bi me-1" :class="verdict.icon"></i>{{ verdict.text }}
         </div>
+        <div v-if="replayIndex !== null && timeline[replayIndex]" class="alert alert-info py-2 small mb-2" data-testid="replay-banner">
+          <i class="bi bi-film"></i>
+          {{ replaying ? '重播中' : '定格' }} 第 {{ replayIndex + 1 }}／{{ timeline.length }} 格（{{ fmtOffset(timeline[replayIndex].offsetMs) }}）：
+          <strong>{{ timeline[replayIndex].label }}</strong>
+        </div>
+        <div class="sm-legend mb-3">
+          <span v-for="lg in legend" :key="lg.status"><i class="sw" :class="'st-' + lg.status"></i>{{ lg.zh }}</span>
+        </div>
+        <state-lane v-for="lane in lanes" :key="lane.key" :lane="lane" :changed="changedLanes.includes(lane.key)"></state-lane>
+        <p class="muted small mb-0">
+          <i class="bi bi-lightbulb"></i>
+          預留票（accountdb）先變、Saga／訂單（orderdb）收到 Kafka 事件後才跟上 —— 兩庫無 XA，靠事件達成最終一致。
+          成功＝Saga 交易完成＋訂單已成交；補償＝Saga 補償完成＋訂單已失敗（正確收尾，不是系統錯誤）。
+        </p>
       </div>
-      <div class="card">
-        <div class="card-header">Kafka 軌跡</div>
-        <div class="card-body py-2">
-          <p v-if="events.length === 0" class="muted mb-0">尚無訊息</p>
-          <div v-for="(e, i) in events" :key="i" class="small">
-            <span :class="eventClass(e.type)">{{ e.type }}</span>
-            <span class="muted"> · {{ e.topic }}</span>
+    </section>
+
+    <div class="row g-3">
+      <!-- ③ 時間軸 -->
+      <div class="col-lg-7">
+        <section id="timeline" class="card mb-3">
+          <div class="card-header"><i class="bi bi-clock-history"></i> 狀態變化時間軸（Saga 步驟＋Kafka 軌跡重建；點一列可定格）</div>
+          <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+              <thead class="table-light">
+                <tr><th>#</th><th>時間</th><th>來源</th><th>發生什麼</th><th>三組狀態</th></tr>
+              </thead>
+              <tbody>
+                <tr v-if="timeline.length === 0">
+                  <td colspan="5" class="text-center muted py-3">尚未選擇交易</td>
+                </tr>
+                <tr v-for="(f, i) in timeline" :key="i" class="tl-row" :class="{ 'tl-current': replayIndex === i }"
+                    data-testid="timeline-row" @click="jumpTo(i)">
+                  <td>{{ i + 1 }}</td>
+                  <td class="small text-nowrap">{{ fmtOffset(f.offsetMs) }}</td>
+                  <td><span class="side-chip" :class="'side-' + f.side">{{ f.sideZh }}</span></td>
+                  <td class="small">{{ f.label }}<div class="muted"><code>{{ f.name }}</code></div></td>
+                  <td class="small muted">{{ f.summary }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <div class="card mb-3">
+          <div class="card-header">目前 Saga（文字明細）</div>
+          <div class="card-body">
+            <p v-if="!currentSaga" class="muted mb-0">尚未下單。點上方按鈕後會輪詢終態。</p>
+            <div v-else>
+              <p>sagaId <code>{{ currentSaga.sagaId }}</code></p>
+              <p>Saga <span class="badge" :class="sagaBadge">{{ currentSaga.status }}</span>
+                <span class="muted mx-1">／</span>
+                訂單 <span class="badge" :class="orderBadge">{{ currentOrder?.status ?? '—' }}</span>
+                <span class="muted mx-1">／</span>
+                預留票 <span class="badge bg-secondary">{{ currentTcc?.exists ? currentTcc.state : '（無票）' }}</span>
+              </p>
+              <ol class="mb-0">
+                <li v-for="(s, i) in currentSaga.steps" :key="i">
+                  <strong>{{ s.name }}</strong> — {{ s.detail }}
+                </li>
+              </ol>
+            </div>
           </div>
         </div>
+      </div>
+
+      <div class="col-lg-5">
+        <!-- ④ 訂單 -->
+        <section id="orders" class="card mb-3">
+          <div class="card-header"><i class="bi bi-list-ul"></i> 訂單（點一列 → 在 Dashboard 檢視）</div>
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="table-light">
+                <tr><th>訂單 status</th><th>amount</th><th>forceFail</th><th>orderId</th></tr>
+              </thead>
+              <tbody>
+                <tr v-if="orders.length === 0">
+                  <td colspan="4" class="text-center muted py-3">尚無訂單</td>
+                </tr>
+                <tr v-for="o in orders" :key="o.orderId" class="order-row" data-testid="order-row" :data-saga-id="o.sagaId"
+                    :class="{ 'table-active': currentSaga && o.orderId === currentSaga.orderId }" @click="inspectOrder(o)">
+                  <td><span class="badge" :class="orderBadgeClass(o.status)">{{ o.status }}</span></td>
+                  <td>{{ o.amount }}</td>
+                  <td>{{ o.forceFail }}</td>
+                  <td><code>{{ o.orderId.slice(0, 8) }}…</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <!-- ⑤ Kafka 軌跡 -->
+        <section id="trail" class="card mb-3">
+          <div class="card-header"><i class="bi bi-broadcast"></i> Kafka 軌跡（全部）</div>
+          <div class="card-body py-2">
+            <p v-if="events.length === 0" class="muted mb-0">尚無訊息</p>
+            <div v-for="(e, i) in events" :key="i" class="small">
+              <span :class="eventClass(e.type)">{{ e.type }}</span>
+              <span class="muted"> · {{ e.topic }} · {{ (e.sagaId || '').slice(0, 8) }}</span>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </div>
