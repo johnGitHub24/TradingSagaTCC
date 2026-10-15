@@ -23,3 +23,6 @@ data/
 
 # eos-minimal onboard
 .env
+
+# run-manual.ps1 failure screenshots (debug only)
+docs/manual/shots/_fail-*.png

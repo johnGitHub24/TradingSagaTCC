@@ -59,6 +59,17 @@ tasks.named('check') {
     dependsOn tasks.named('integrationTest')
 }
 
+// 【職責】自動截圖操作手冊（docs/manual，run-manual.ps1 產生）打進 static/manual，前台導航列「操作手冊」直接開 /manual/操作手冊.html
+// 【技巧】只帶 html／md 與 shots/*.png；_fail-*.png 是劇本失敗的除錯截圖、*.mjs 是產生器，都不進 jar
+// 【概念】手冊在 git 只有 docs/manual 一份，不複製進 src/main/resources，避免兩份漂移
+tasks.named('processResources') {
+    from('docs/manual') {
+        include '*.html', '*.md', 'shots/*.png'
+        exclude 'shots/_fail-*.png'
+        into 'static/manual'
+    }
+}
+
 springBoot {
     mainClass = 'com.trading.saga.TradingSagaTccApplication'
 }

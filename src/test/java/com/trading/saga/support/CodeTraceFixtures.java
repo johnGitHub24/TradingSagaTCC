@@ -8,7 +8,9 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -42,20 +44,52 @@ public final class CodeTraceFixtures {
         public String entryRef() {
             return chain.isEmpty() ? null : chain.get(0);
         }
+
+        /**
+         * 入口在 {@code entries} 字典的 key：{@code 種類 細節}，如 {@code SCHEDULED trading.outbox.poll-ms}；NONE 為 null。
+         * <br>規則與前端 {@code dashboard.js#entryKey} 一致（排程細節取 property，沒有時取 every）。
+         */
+        public String entryKey() {
+            return switch (kind) {
+                case "HTTP" -> "HTTP " + method + " " + path;
+                case "KAFKA" -> "KAFKA " + topic;
+                case "SCHEDULED" -> "SCHEDULED " + property;
+                default -> null;
+            };
+        }
     }
 
     /**
      * 【職責】讀出全部 trace（依 JSON 順序）。
      */
     public static List<CodeTrace> load() {
+        List<CodeTrace> result = new ArrayList<>();
+        readRoot().path("traces").fields().forEachRemaining(e -> result.add(toTrace(e.getKey(), e.getValue())));
+        return result;
+    }
+
+    /** 【職責】入口中文說明字典（key 為 {@link CodeTrace#entryKey()}）。 */
+    public static Map<String, String> entries() {
+        return textMap(readRoot().path("entries"));
+    }
+
+    /** 【職責】呼叫鏈每格的中文說明字典（key 為 {@code 完整類別名#方法名}）。 */
+    public static Map<String, String> methods() {
+        return textMap(readRoot().path("methods"));
+    }
+
+    private static Map<String, String> textMap(JsonNode node) {
+        Map<String, String> result = new LinkedHashMap<>();
+        node.fields().forEachRemaining(e -> result.put(e.getKey(), e.getValue().asText()));
+        return result;
+    }
+
+    private static JsonNode readRoot() {
         try (InputStream in = CodeTraceFixtures.class.getClassLoader().getResourceAsStream(RESOURCE)) {
             if (in == null) {
                 throw new IllegalStateException("classpath 找不到 " + RESOURCE);
             }
-            JsonNode traces = SagaTestFixtures.mapper().readTree(in).path("traces");
-            List<CodeTrace> result = new ArrayList<>();
-            traces.fields().forEachRemaining(e -> result.add(toTrace(e.getKey(), e.getValue())));
-            return result;
+            return SagaTestFixtures.mapper().readTree(in);
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot parse " + RESOURCE, e);
         }

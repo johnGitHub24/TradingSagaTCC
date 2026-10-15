@@ -445,13 +445,25 @@ export function formatRef(ref) {
 const ENTRY_ZH = { HTTP: 'HTTP', KAFKA: 'Kafka', SCHEDULED: '排程', NONE: '無程式路徑' };
 
 /**
- * 【職責】查 code-trace.json 組出 tooltip 模型：入口徽章＋呼叫鏈（每格帶分層）＋中文說明。
+ * 【職責】入口在 code-trace.json entries 字典的 key：「種類 細節」，如 'HTTP POST /api/v1/trades'、'SCHEDULED trading.outbox.poll-ms'。
+ * 【概念】與 Java CodeTraceFixtures.entryKey 同規則；NONE 沒有入口 → null。
+ * @param {object} e trace.entry
+ * @returns {string|null}
+ */
+export function entryKey(e) {
+    const detail = { HTTP: e.method + ' ' + e.path, KAFKA: e.topic, SCHEDULED: e.property ?? e.every }[e.kind];
+    return detail ? e.kind + ' ' + detail : null;
+}
+
+/**
+ * 【職責】查 code-trace.json 組出 tooltip 模型：入口徽章＋入口中文＋呼叫鏈（每格帶分層與中文）＋整體說明。
  * 【使用】app.js hover／點擊區塊、按鈕、時間軸列時呼叫；查不到回 null（不顯示 tooltip）。
  * @param {object|null} traces code-trace.json 的 traces 物件
  * @param {string|null} key 例如 'saga:COMPLETED'
- * @returns {{key:string, kind:string, kindZh:string, entry:string, zh:string, steps:Array}|null}
+ * @param {{entries?:object, methods?:object}} [glossary] code-trace.json 的中文字典；缺說明時 zh 為空字串
+ * @returns {{key:string, kind:string, kindZh:string, entry:string, entryZh:string, zh:string, steps:Array}|null}
  */
-export function buildTrace(traces, key) {
+export function buildTrace(traces, key, glossary = {}) {
     const t = key && traces ? traces[key] : null;
     if (!t) return null;
     const e = t.entry || { kind: 'NONE' };
@@ -459,12 +471,14 @@ export function buildTrace(traces, key) {
     if (e.kind === 'HTTP') entry = e.method + ' ' + e.path;
     else if (e.kind === 'KAFKA') entry = 'topic ' + e.topic;
     else if (e.kind === 'SCHEDULED') entry = '@Scheduled（${' + e.every + '}）';
+    const methods = glossary.methods || {};
     return {
         key,
         kind: e.kind,
         kindZh: ENTRY_ZH[e.kind] ?? e.kind,
         entry,
+        entryZh: (glossary.entries || {})[entryKey(e)] || '',
         zh: t.zh ?? '',
-        steps: (t.chain || []).map(formatRef)
+        steps: (t.chain || []).map((ref) => ({ ...formatRef(ref), zh: methods[ref] || '' }))
     };
 }

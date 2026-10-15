@@ -11,7 +11,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.lang.reflect.Method;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,6 +64,26 @@ class CodeTraceMapTest {
                 assertThat(CodeTraceFixtures.findMethod(ref)).as(t.key() + " → " + ref).isPresent();
             }
         }));
+    }
+
+    /**
+     * DASH-004：Given 對照表，When 收集實際用到的入口與 {@code 類別#方法}，
+     * <br>Then {@code entries}／{@code methods} 中文字典一一對應：用到的都有說明、沒有改名後留下的孤兒說明。
+     */
+    @Test
+    @DisplayName("DASH-004: every entry and chain ref has a zh explanation, no orphans")
+    void glossary_coversEveryEntryAndRef() {
+        Set<String> usedEntries = TRACES.stream().map(CodeTrace::entryKey).filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> usedMethods = TRACES.stream().flatMap(t -> t.chain().stream())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<String, String> entries = CodeTraceFixtures.entries();
+        Map<String, String> methods = CodeTraceFixtures.methods();
+
+        assertThat(usedEntries).as("entries 缺說明").allSatisfy(k -> assertThat(entries.get(k)).as(k).isNotBlank());
+        assertThat(usedMethods).as("methods 缺說明").allSatisfy(r -> assertThat(methods.get(r)).as(r).isNotBlank());
+        assertThat(entries.keySet()).as("entries 多出沒用到的").isSubsetOf(usedEntries);
+        assertThat(methods.keySet()).as("methods 多出沒用到的").isSubsetOf(usedMethods);
     }
 
     /**

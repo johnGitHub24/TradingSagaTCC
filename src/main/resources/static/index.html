@@ -103,7 +103,7 @@
     .tl-row[data-trace], .sm-stage[data-trace] { cursor: pointer; }
     .trace-tip { position: fixed; z-index: 2000; width: min(440px, calc(100vw - 16px)); background: #0b1220; color: #e2e8f0;
                  border: 1px solid #3b82f6; border-radius: .5rem; padding: .6rem .75rem; font-size: .8rem;
-                 box-shadow: 0 8px 28px rgba(0,0,0,.55); }
+                 box-shadow: 0 8px 28px rgba(0,0,0,.55); overflow-y: auto; overscroll-behavior: contain; }
     .trace-tip.above { transform: translateY(-100%); }
     .trace-head { display: flex; align-items: center; gap: .45rem; margin-bottom: .4rem; flex-wrap: wrap; }
     .trace-head code { color: #fde68a; }
@@ -113,7 +113,10 @@
     .kind-SCHEDULED { background: #7c3aed; color: #fff; }
     .kind-NONE { background: #475569; color: #fff; }
     .trace-chain { list-style: none; padding: 0; margin: 0 0 .4rem; }
-    .trace-chain li { display: flex; align-items: center; gap: .4rem; padding: .1rem 0; }
+    .trace-chain li { display: flex; align-items: flex-start; gap: .4rem; padding: .15rem 0; }
+    .trace-step { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+    .trace-step-zh { color: #94a3b8; font-size: .72rem; line-height: 1.35; }
+    .trace-entry-zh { color: #cbd5e1; font-size: .75rem; margin: -.2rem 0 .4rem; }
     .trace-chain li + li::before { content: '↳'; color: #64748b; margin-left: .2rem; }
     .trace-chain code { color: #e2e8f0; background: #1e293b; padding: 0 .3rem; border-radius: .2rem; }
     .trace-layer { font-size: .65rem; min-width: 4.6rem; text-align: center; padding: .02rem .3rem; border-radius: .25rem; color: #0b1220; }
@@ -142,7 +145,10 @@
         <li class="nav-item"><a class="nav-link" :class="{ active: activeSection === 'trail' }" href="#trail" data-testid="nav-trail" @click.prevent="scrollTo('trail')"><i class="bi bi-broadcast"></i> Kafka 軌跡</a></li>
       </ul>
       <div>
-        <a href="/test/runner.html" class="btn btn-sm btn-outline-success me-1">UI Smoke</a>
+        <!-- 操作手冊：docs/manual 由 Gradle processResources 複製到 static/manual（git 只有 docs/ 一份） -->
+        <a href="/manual/操作手冊.html" class="btn btn-sm btn-warning me-1" target="_blank" rel="noopener" data-testid="nav-manual"
+           title="自動截圖操作手冊（新分頁）：每一步怎麼點、看哪裡"><i class="bi bi-book"></i> 操作手冊</a>
+        <a href="/test/runner.html" class="btn btn-sm btn-outline-success me-1" data-testid="nav-ui-smoke">UI Smoke</a>
         <a href="/swagger-ui.html" class="btn btn-sm btn-outline-secondary me-1" target="_blank">API</a>
         <a href="/h2-console" class="btn btn-sm btn-outline-secondary me-1" target="_blank">H2</a>
         <button class="btn btn-sm btn-outline-info" @click="refresh" :disabled="loading" data-testid="btn-refresh">
@@ -335,15 +341,17 @@
   </div>
 
   <!-- DASH-004 呼叫鏈 tooltip：內容來自 /code-trace.json（反射測試保證與程式碼一致） -->
-  <div v-if="tip" class="trace-tip" :class="{ above: tip.above }" :style="{ left: tip.x + 'px', top: tip.y + 'px' }"
+  <div v-if="tip" class="trace-tip" :class="{ above: tip.above }" :style="{ left: tip.x + 'px', top: tip.y + 'px', maxHeight: tip.maxH + 'px' }"
        data-testid="trace-tip" :data-trace-key="tip.trace.key" @mouseenter="keepTip" @mouseleave="hideTip">
     <div class="trace-head">
       <span class="trace-kind" :class="'kind-' + tip.trace.kind">{{ tip.trace.kindZh }}</span>
       <code>{{ tip.trace.entry }}</code>
     </div>
+    <div v-if="tip.trace.entryZh" class="trace-entry-zh">{{ tip.trace.entryZh }}</div>
     <ol v-if="tip.trace.steps.length" class="trace-chain">
       <li v-for="(s, i) in tip.trace.steps" :key="i" :title="s.ref">
-        <span class="trace-layer" :class="'layer-' + s.layer">{{ s.layer }}</span><code>{{ s.label }}</code>
+        <span class="trace-layer" :class="'layer-' + s.layer">{{ s.layer }}</span>
+        <span class="trace-step"><code>{{ s.label }}</code><small v-if="s.zh" class="trace-step-zh">{{ s.zh }}</small></span>
       </li>
     </ol>
     <div class="trace-zh">{{ tip.trace.zh }}</div>

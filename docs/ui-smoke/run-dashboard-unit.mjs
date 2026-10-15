@@ -18,8 +18,8 @@ const loadModule = async (file) => {
 
 const model = await loadModule('dashboard.js');
 const { runDashboardSpecs } = await loadModule('test/dashboard.spec.js');
-const { traces } = JSON.parse(await readFile(path.join(staticDir, 'code-trace.json'), 'utf8'));
-const { passed, failed, results } = runDashboardSpecs(model, traces);
+const { traces, entries, methods } = JSON.parse(await readFile(path.join(staticDir, 'code-trace.json'), 'utf8'));
+const { passed, failed, results } = runDashboardSpecs(model, traces, { entries, methods });
 
 for (const r of results) {
     console.log(`${r.pass ? 'PASS' : 'FAIL'}  ${r.id} ${r.name}${r.pass ? '' : '\n      ' + r.error}`);

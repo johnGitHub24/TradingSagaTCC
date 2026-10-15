@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TradingSagaTCC 操作手冊</title>
+<style>
+:root{--bg:#0f1720;--card:#16212d;--line:#26384a;--fg:#e6edf3;--muted:#8b9cb3;--acc:#4da3ff;--red:#ff3b30}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.7 "Microsoft JhengHei","Noto Sans TC",system-ui,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:24px}a{color:var(--acc)}code{background:#0b1218;border:1px solid var(--line);border-radius:4px;padding:0 5px;font-size:.88em}
+header.cover{border-bottom:1px solid var(--line);margin-bottom:16px}header.cover h1{margin:.2em 0 0}.muted{color:var(--muted)}
+nav.toc{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 20px;margin:16px 0}nav.toc ol ol{font-size:.92em}
+table.acc{border-collapse:collapse;width:100%;margin:8px 0 20px}table.acc td,table.acc th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+#overview{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:20px 0}
+.ov-chapter{border:1px dashed var(--line);border-radius:10px;padding:10px 12px}.ov-ch-title{font-weight:700;margin-bottom:8px}
+.ov-steps{display:flex;flex-wrap:wrap;align-items:center;gap:6px}.ov-arrow,.ov-down{color:var(--acc);font-weight:700;font-size:20px}.ov-down{text-align:center;line-height:1.6}
+.ov-node{display:flex;flex-direction:column;width:170px;background:#0b1218;border:1px solid var(--line);border-radius:8px;overflow:hidden;text-decoration:none;color:var(--fg);font-size:13px}
+.ov-node:hover{border-color:var(--acc)}.ov-node img{width:100%;height:96px;object-fit:cover;object-position:top}.ov-node span{padding:4px 8px}
+.ov-state{margin-top:14px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px}
+.oc-grid{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.oc-start{background:#1e3a8a;border-radius:8px;padding:8px 14px;font-weight:700;text-align:center}
+.oc-ends{display:flex;gap:10px;flex-wrap:wrap}.oc{display:flex;flex-direction:column;min-width:190px;padding:8px 14px;border-radius:10px;text-decoration:none;color:#fff;font-size:13px}
+.oc b{font-size:15px}.oc-ok{background:#2f855a}.oc-warn{background:#b45309}
+.chapter>h2{border-left:5px solid var(--acc);padding-left:10px;margin-top:40px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:18px 0}
+.step h3{margin:0 0 4px}.step .no{display:inline-block;background:var(--acc);color:#04111f;border-radius:6px;padding:0 8px;margin-right:8px;font-size:.9em}
+.purpose{color:#c9d6e3}.shot img{width:100%;border:1px solid var(--line);border-radius:8px;display:block}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}@media(max-width:860px){.cols{grid-template-columns:1fr}}
+h4{margin:12px 0 4px;color:var(--acc)}ol.callouts{list-style:none;padding-left:0}ol.callouts li{margin:6px 0;display:flex;gap:8px}
+.num{flex:none;width:24px;height:24px;border-radius:50%;background:var(--red);color:#fff;font-weight:700;font-size:13px;text-align:center;line-height:24px}
+.case{display:inline-block;background:#0b1218;border:1px solid var(--line);border-radius:999px;padding:0 10px;font-size:12px;margin:2px 0}
+details.trace{margin-top:10px;background:#0b1218;border:1px solid var(--line);border-radius:8px;padding:8px 12px}details.trace summary{cursor:pointer;font-weight:700}
+.tr-path{margin:8px 0}.tr-entry .tag{background:var(--acc);color:#04111f;border-radius:4px;padding:0 6px;margin-right:6px;font-size:12px}.zh{color:var(--muted);font-size:13px}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px;padding-top:12px}
+</style></head><body><div class="wrap">
+<header class="cover"><h1>TradingSagaTCC 操作手冊</h1><p class="muted">一頁式 Dashboard：下單啟動 Saga → 三條狀態機看結局 → 重播／呼叫鏈／訂單回看（自動截圖產生）</p>
+<p class="muted">產生時間 2026/10/15 10:09:29 · 環境 <code>http://localhost:8093</code> · 截圖由 <code>docs/run-manual.ps1</code> 自動操作瀏覽器取得 · <a href="/">回 Dashboard</a></p></header>
+<h2>前置條件</h2><table class="acc"><tr><th>項目</th><th>值</th><th>說明</th></tr><tr><td>帳戶</td><td><code>ACC-001</code></td><td>種子 available 100000；每輪 Demo 前按「還原種子 100000」</td></tr><tr><td>網址</td><td><code>http://localhost:8093/</code></td><td>Gradle <code>bootRun</code> 後開啟（內嵌 Kafka，不必 Docker）</td></tr><tr><td>自動重播</td><td><code>?autoReplay=0</code></td><td>截圖時關閉「完成後自動重播」，畫面才會停在終態</td></tr></table>
+<section id="overview"><h2>導覽圖</h2><p class="muted">依畫面使用順序排列；點任一縮圖跳到該步驟說明。</p><div class="ov-chapter"><div class="ov-ch-title">1. 開始之前：畫面配置</div><div class="ov-steps"><a class="ov-node" href="#step-overview"><img src="shots/01-overview.png" alt=""><span><b>1.1</b> 首頁全貌與導航列</span></a></div></div><div class="ov-down">↓</div><div class="ov-chapter"><div class="ov-ch-title">2. 三種劇情：一筆交易的三種結局</div><div class="ov-steps"><a class="ov-node" href="#step-saga-001"><img src="shots/02-saga-001.png" alt=""><span><b>2.1</b> 成功路徑（SAGA-001）：Try → Confirm</span></a><span class="ov-arrow">→</span><a class="ov-node" href="#step-saga-002"><img src="shots/03-saga-002.png" alt=""><span><b>2.2</b> 餘額不足（SAGA-002）：Try 失敗 → 補償</span></a><span class="ov-arrow">→</span><a class="ov-node" href="#step-tcc-002"><img src="shots/04-tcc-002.png" alt=""><span><b>2.3</b> 故意失敗補償（TCC-002）：Try → Cancel</span></a></div></div><div class="ov-down">↓</div><div class="ov-chapter"><div class="ov-ch-title">3. 觀察工具：呼叫鏈、時間軸定格、慢動作重播、訂單回看</div><div class="ov-steps"><a class="ov-node" href="#step-hover-trace"><img src="shots/05-hover-trace.png" alt=""><span><b>3.1</b> 滑過狀態區塊看程式進入點（hover 呼叫鏈）</span></a><span class="ov-arrow">→</span><a class="ov-node" href="#step-timeline-freeze"><img src="shots/06-timeline-freeze.png" alt=""><span><b>3.2</b> 時間軸：點一列定格</span></a><span class="ov-arrow">→</span><a class="ov-node" href="#step-replay"><img src="shots/07-replay.png" alt=""><span><b>3.3</b> 定格橫幅、慢動作重播、回到即時</span></a><span class="ov-arrow">→</span><a class="ov-node" href="#step-inspect-order"><img src="shots/08-inspect-order.png" alt=""><span><b>3.4</b> 訂單列表：回看過去的交易</span></a></div></div><div class="ov-state"><div class="ov-ch-title">一筆交易的三種結局（本次實測終態；點卡片跳到對應步驟）</div>
+    <div class="oc-grid"><span class="oc-start">POST /api/v1/trades<br>Saga STARTED</span><span class="ov-arrow">→</span><div class="oc-ends"><a class="oc oc-ok" href="#step-saga-001"><b>成功路徑</b><span>Saga COMPLETED</span><span>訂單 FILLED</span><span>預留票 CONFIRMED</span></a><a class="oc oc-warn" href="#step-saga-002"><b>餘額不足</b><span>Saga COMPENSATED</span><span>訂單 FAILED</span><span>預留票 TRY_FAILED</span></a><a class="oc oc-warn" href="#step-tcc-002"><b>故意失敗補償</b><span>Saga COMPENSATED</span><span>訂單 FAILED</span><span>預留票 CANCELLED</span></a></div></div></div></section>
+<nav class="toc"><h2>目錄</h2><ol><li><a href="#ch-start">1. 開始之前：畫面配置</a><ol><li><a href="#step-overview">1.1 首頁全貌與導航列</a></li></ol></li><li><a href="#ch-saga">2. 三種劇情：一筆交易的三種結局</a><ol><li><a href="#step-saga-001">2.1 成功路徑（SAGA-001）：Try → Confirm</a></li><li><a href="#step-saga-002">2.2 餘額不足（SAGA-002）：Try 失敗 → 補償</a></li><li><a href="#step-tcc-002">2.3 故意失敗補償（TCC-002）：Try → Cancel</a></li></ol></li><li><a href="#ch-observe">3. 觀察工具：呼叫鏈、時間軸定格、慢動作重播、訂單回看</a><ol><li><a href="#step-hover-trace">3.1 滑過狀態區塊看程式進入點（hover 呼叫鏈）</a></li><li><a href="#step-timeline-freeze">3.2 時間軸：點一列定格</a></li><li><a href="#step-replay">3.3 定格橫幅、慢動作重播、回到即時</a></li><li><a href="#step-inspect-order">3.4 訂單列表：回看過去的交易</a></li></ol></li></ol></nav>
+<section class="chapter" id="ch-start"><h2>1. 開始之前：畫面配置</h2>
+    <article class="step" id="step-overview">
+  <h3><span class="no">1.1</span>首頁全貌與導航列</h3>
+  <p class="purpose">整個系統只有一頁：上面下單、中間看三條狀態機、下面看時間軸與訊息。先還原帳戶，讓 available 回到種子 100000。</p>
+  <a class="shot" href="shots/01-overview.png" target="_blank"><img src="shots/01-overview.png" alt="首頁全貌與導航列" loading="lazy"></a>
+  <div class="cols">
+    <div><h4>畫面標註</h4><ol class="callouts"><li><span class="num">1</span>導航列：下單操作／狀態機 Dashboard／時間軸／訂單／Kafka 軌跡，點了平滑捲到該區塊</li><li><span class="num">2</span>操作手冊：新分頁開啟本手冊，邊看邊操作</li><li><span class="num">3</span>UI Smoke：瀏覽器內跑 DASH-002～004 自動驗收（會真的下單）</li><li><span class="num">4</span>下單操作：帳戶餘額、還原種子、三顆劇情按鈕</li><li><span class="num">5</span>三方狀態機 Dashboard：Saga 流程／訂單結果／TCC 資金三條 lane</li><li><span class="num">6</span>狀態變化時間軸：Saga 步驟＋Kafka 訊息重建，點一列可定格</li><li><span class="num">7</span>訂單列表：點一列在 Dashboard 回看那筆交易</li><li><span class="num">8</span>Kafka 軌跡：所有指令與事件訊息</li></ol></div>
+    <div><h4>操作步驟</h4><ol><li>開啟 http://localhost:8093/</li><li>按「還原種子 100000」</li><li>需要對照步驟時點導航列「操作手冊」（新分頁）</li></ol><h4>預期結果</h4><p>頂部出現「帳戶已還原 100000」，available＝100000；Dashboard 總結列顯示「尚未選擇交易」。</p>
+      <h4>API／驗收案例</h4><p><code>POST /api/v1/accounts/ACC-001/reset、GET /api/v1/demo/state</code></p><p><span class="case">ACCOUNT-001</span> <span class="case">DASH-001</span></p></div>
+  </div>
+  <details class="trace"><summary>背後程式（hover 呼叫鏈 <code>action:reset</code>）</summary><p>把種子帳戶還原為 available=100000、frozen=0</p>
+  <div class="tr-path"><div class="tr-entry"><span class="tag">入口</span><code>HTTP POST /api/v1/accounts/{accountId}/reset</code><div class="zh">前台按「還原種子 100000」：重置 Demo 帳戶餘額</div></div>
+  <ol><li><code>AccountController.reset</code><div class="zh">Demo 重置 API：交給 AccountQueryService 還原種子帳戶</div></li><li><code>AccountQueryService.reset</code><div class="zh">accountdb 交易內重置帳戶餘額</div></li><li><code>Account.resetTo</code><div class="zh">直接設定 available／frozen（Demo／測試用）</div></li></ol></div></details>
+</article></section>
+<section class="chapter" id="ch-saga"><h2>2. 三種劇情：一筆交易的三種結局</h2>
+    <article class="step" id="step-saga-001">
+  <h3><span class="no">2.1</span>成功路徑（SAGA-001）：Try → Confirm</h3>
+  <p class="purpose">正常買入：帳戶先凍結金額（Try），Saga 收到 FUNDS_RESERVED 後下 Confirm 扣款，訂單成交。兩個資料庫沒有 XA，靠 Kafka 事件最終一致。</p>
+  <a class="shot" href="shots/02-saga-001.png" target="_blank"><img src="shots/02-saga-001.png" alt="成功路徑（SAGA-001）：Try → Confirm" loading="lazy"></a>
+  <div class="cols">
+    <div><h4>畫面標註</h4><ol class="callouts"><li><span class="num">1</span>總結列（綠）：Saga <code>COMPLETED</code>／訂單 <code>FILLED</code>／預留票 <code>CONFIRMED</code></li><li><span class="num">2</span>Saga 流程：STARTED → ACCOUNT_TRYING → ACCOUNT_CONFIRMING → COMPLETED</li><li><span class="num">3</span>訂單結果：PENDING → FILLED（orderdb）</li><li><span class="num">4</span>預留票：TRYING → CONFIRMED（accountdb，Try 凍結、Confirm 扣款）</li></ol></div>
+    <div><h4>操作步驟</h4><ol><li>數量 1、價格 10000（預設值）</li><li>按綠色「成功路徑（SAGA-001）」</li><li>等頂部提示變綠</li></ol><h4>預期結果</h4><p>Saga <code>COMPLETED</code>／訂單 <code>FILLED</code>／預留票 <code>CONFIRMED</code>；available 100000 → 90000（扣 10000）。</p>
+      <h4>API／驗收案例</h4><p><code>POST /api/v1/trades（202＋sagaId）→ 輪詢 GET /api/v1/sagas/{sagaId}</code></p><p><span class="case">SAGA-001</span> <span class="case">OUTBOX-001</span> <span class="case">TCC-001</span> <span class="case">DASH-002</span></p></div>
+  </div>
+  <details class="trace"><summary>背後程式（hover 呼叫鏈 <code>action:place</code>）</summary><p>只負責「啟動」：建立訂單＋Saga、RESERVE_FUNDS 進發件匣，HTTP 202 立即返回；之後全靠 Kafka 推進</p>
+  <div class="tr-path"><div class="tr-entry"><span class="tag">入口</span><code>HTTP POST /api/v1/trades</code><div class="zh">前台按 SAGA-001／SAGA-002／TCC-002 任一顆下單鈕：只啟動 Saga，HTTP 202 立即返回</div></div>
+  <ol><li><code>TradeController.place</code><div class="zh">接收下單請求：@Valid 驗證後交給 SagaOrchestrator，回 202 Accepted</div></li><li><code>SagaOrchestrator.start</code><div class="zh">orderdb 同一 Local TX：建訂單＋Saga 實例 → 轉 ACCOUNT_TRYING → RESERVE_FUNDS 寫進發件匣</div></li><li><code>OutboxPublisherService.append</code><div class="zh">把命令寫進發件匣（outbox 表），與業務資料同一個 TX</div></li></ol></div></details>
+</article>
+<article class="step" id="step-saga-002">
+  <h3><span class="no">2.2</span>餘額不足（SAGA-002）：Try 失敗 → 補償</h3>
+  <p class="purpose">用 999999 的價格下單：帳戶 Try 失敗回 FUNDS_FAILED，Saga 把訂單標記失敗收尾。補償完成是「正確結局」，不是系統錯誤。</p>
+  <a class="shot" href="shots/03-saga-002.png" target="_blank"><img src="shots/03-saga-002.png" alt="餘額不足（SAGA-002）：Try 失敗 → 補償" loading="lazy"></a>
+  <div class="cols">
+    <div><h4>畫面標註</h4><ol class="callouts"><li><span class="num">1</span>總結列（橘）：Saga <code>COMPENSATED</code>／訂單 <code>FAILED</code>／預留票 <code>TRY_FAILED</code></li><li><span class="num">2</span>Saga 走補償分岔：ACCOUNT_TRYING 之後 → COMPENSATING → COMPENSATED</li><li><span class="num">3</span>預留票：餘額不足，Try 直接失敗、沒有凍結任何金額</li></ol></div>
+    <div><h4>操作步驟</h4><ol><li>按黃色「餘額不足（SAGA-002）」（自動用 1×999999，結束後價格還原 10000）</li><li>等頂部提示變橘</li></ol><h4>預期結果</h4><p>Saga <code>COMPENSATED</code>／訂單 <code>FAILED</code>／預留票 <code>TRY_FAILED</code>；available 維持 90000（沒有被扣）。</p>
+      <h4>API／驗收案例</h4><p><code>POST /api/v1/trades → Kafka FUNDS_FAILED → GET /api/v1/sagas/{sagaId}</code></p><p><span class="case">SAGA-002</span> <span class="case">TCC-001</span> <span class="case">DASH-002</span></p></div>
+  </div>
+  
+</article>
+<article class="step" id="step-tcc-002">
+  <h3><span class="no">2.3</span>故意失敗補償（TCC-002）：Try → Cancel</h3>
+  <p class="purpose">forceFail=true：帳戶 Try 成功凍結後故意 Cancel，示範 TCC 的「取消」把凍結金額退回。</p>
+  <a class="shot" href="shots/04-tcc-002.png" target="_blank"><img src="shots/04-tcc-002.png" alt="故意失敗補償（TCC-002）：Try → Cancel" loading="lazy"></a>
+  <div class="cols">
+    <div><h4>畫面標註</h4><ol class="callouts"><li><span class="num">1</span>總結列（橘）：Saga <code>COMPENSATED</code>／訂單 <code>FAILED</code>／預留票 <code>CANCELLED</code></li><li><span class="num">2</span>訂單結果：PENDING → FAILED</li><li><span class="num">3</span>預留票：TRYING → CANCELLED（凍結的錢退回 available）</li></ol></div>
+    <div><h4>操作步驟</h4><ol><li>按紅色「故意失敗補償（TCC-002）」</li><li>等頂部提示變橘</li></ol><h4>預期結果</h4><p>Saga <code>COMPENSATED</code>／訂單 <code>FAILED</code>／預留票 <code>CANCELLED</code>；available 回到 90000（Try 凍結後已退回）。</p>
+      <h4>API／驗收案例</h4><p><code>POST /api/v1/trades（forceFail=true）→ Kafka FUNDS_CANCELLED</code></p><p><span class="case">TCC-002</span> <span class="case">TCC-001</span> <span class="case">DASH-002</span></p></div>
+  </div>
+  
+</article></section>
+<section class="chapter" id="ch-observe"><h2>3. 觀察工具：呼叫鏈、時間軸定格、慢動作重播、訂單回看</h2>
+    <article class="step" id="step-hover-trace">
+  <h3><span class="no">3.1</span>滑過狀態區塊看程式進入點（hover 呼叫鏈）</h3>
+  <p class="purpose">想知道「是哪段程式把狀態改成這樣」：滑過區塊即可看到進入點與方法鏈，資料來自 code-trace.json（測試保證與程式碼一致）。</p>
+  <a class="shot" href="shots/05-hover-trace.png" target="_blank"><img src="shots/05-hover-trace.png" alt="滑過狀態區塊看程式進入點（hover 呼叫鏈）" loading="lazy"></a>
+  <div class="cols">
+    <div><h4>畫面標註</h4><ol class="callouts"><li><span class="num">1</span>滑鼠停在「補償完成」區塊（按鈕、時間軸列也都可以）</li><li><span class="num">2</span>呼叫鏈：入口（Kafka topic）→ Listener → Handler → Service → 方法，每格附中文說明</li><li><span class="num">3</span>「顯示呼叫鏈」開關：關掉後滑過不再跳提示</li></ol></div>
+    <div><h4>操作步驟</h4><ol><li>確認 Dashboard 右上「顯示呼叫鏈」為開</li><li>滑鼠停在任一狀態區塊、劇情按鈕或時間軸列</li><li>移開滑鼠或捲動頁面，提示自動收起</li></ol><h4>預期結果</h4><p>出現深色提示框，第一行是入口（HTTP／Kafka／排程），下面依序列出 Controller／Listener → Service → 方法。</p>
+      <h4>API／驗收案例</h4><p><code>GET /code-trace.json</code></p><p><span class="case">DASH-004</span></p></div>
+  </div>
+  <details class="trace"><summary>背後程式（hover 呼叫鏈 <code>saga:COMPENSATED</code>）</summary><p>收到 FUNDS_FAILED／FUNDS_CANCELLED → 經 COMPENSATING 收尾，訂單同時標記失敗</p>
+  <div class="tr-path"><div class="tr-entry"><span class="tag">入口</span><code>KAFKA trading.saga.events</code><div class="zh">訂單側收到帳戶回報的結果事件（topic 名稱取自 trading.kafka.event-topic）</div></div>
+  <ol><li><code>SagaKafkaListeners.onEvent</code><div class="zh">訂單側 Kafka 入口：消費帳戶回報的結果事件，交給 OrderSagaEventHandler</div></li><li><code>OrderSagaEventHandler.onMessage</code><div class="zh">依事件類型分派：FUNDS_RESERVED → onReserved、FUNDS_CONFIRMED → onConfirmed、失敗／取消 → 補償</div></li><li><code>OrderMarkFailedAction.compensate</code><div class="zh">補償動作：Saga 經 COMPENSATING 到 COMPENSATED、訂單標 FAILED（只動 orderdb）</div></li><li><code>SagaInstance.transitionTo</code><div class="zh">Saga 狀態機轉移；不允許的跳轉丟例外，狀態維持不變</div></li></ol></div></details>
+</article>
+<article class="step" id="step-timeline-freeze">
+  <h3><span class="no">3.2</span>時間軸：點一列定格</h3>
+  <p class="purpose">時間軸把 Saga 步驟與 Kafka 訊息按時間排好；點一列，Dashboard 就停在「那一刻」三條狀態機的樣子。</p>
+  <a class="shot" href="shots/06-timeline-freeze.png" target="_blank"><img src="shots/06-timeline-freeze.png" alt="時間軸：點一列定格" loading="lazy"></a>
+  <div class="cols">
+    <div><h4>畫面標註</h4><ol class="callouts"><li><span class="num">1</span>被點的列（第 2 格）：發件匣登記 RESERVE_FUNDS → Saga 凍結資金中</li><li><span class="num">2</span>欄位：相對時間、來源（訂單／Kafka／帳戶）、發生什麼、當下三組狀態</li></ol></div>
+    <div><h4>操作步驟</h4><ol><li>在 Dashboard 看著一筆交易（預設是最後一筆）</li><li>時間軸點任一列</li></ol><h4>預期結果</h4><p>該列反白；Dashboard 上方出現「定格 第 2／8 格」橫幅。</p>
+      <h4>API／驗收案例</h4><p><code>—（前端用 GET /api/v1/demo/state 的 Kafka 軌跡重建）</code></p><p><span class="case">DASH-003</span></p></div>
+  </div>
+  
+</article>
+<article class="step" id="step-replay">
+  <h3><span class="no">3.3</span>定格橫幅、慢動作重播、回到即時</h3>
+  <p class="purpose">重播讓你看清楚「預留票先變、Saga／訂單後跟上」的順序：兩個資料庫靠事件追上彼此。</p>
+  <a class="shot" href="shots/07-replay.png" target="_blank"><img src="shots/07-replay.png" alt="定格橫幅、慢動作重播、回到即時" loading="lazy"></a>
+  <div class="cols">
+    <div><h4>畫面標註</h4><ol class="callouts"><li><span class="num">1</span>定格橫幅：目前停在第幾格、相對時間、那一格發生什麼</li><li><span class="num">2</span>慢動作重播：從第 1 格逐格播放（旁邊下拉選每格秒數）</li><li><span class="num">3</span>回到即時：離開定格，顯示最新狀態</li><li><span class="num">4</span>完成後自動重播：開著時，每次下單到終態會自動播一遍</li></ol></div>
+    <div><h4>操作步驟</h4><ol><li>按「慢動作重播」觀察三條 lane 逐格亮起</li><li>按「回到即時」結束定格</li></ol><h4>預期結果</h4><p>重播時變動的 lane 會發藍光；播完自動回到即時。</p>
+      <h4>API／驗收案例</h4><p><code>—（純前端）</code></p><p><span class="case">DASH-003</span></p></div>
+  </div>
+  
+</article>
+<article class="step" id="step-inspect-order">
+  <h3><span class="no">3.4</span>訂單列表：回看過去的交易</h3>
+  <p class="purpose">每一筆交易都能回看：點訂單列，Dashboard、時間軸、文字明細都切到那筆 Saga。</p>
+  <a class="shot" href="shots/08-inspect-order.png" target="_blank"><img src="shots/08-inspect-order.png" alt="訂單列表：回看過去的交易" loading="lazy"></a>
+  <div class="cols">
+    <div><h4>畫面標註</h4><ol class="callouts"><li><span class="num">1</span>點的是第一筆成功交易（sagaId 76addbbf…），列反白</li><li><span class="num">2</span>Dashboard 切回那筆交易：總結列又變綠</li><li><span class="num">3</span>Kafka 軌跡：RESERVE_FUNDS／FUNDS_RESERVED／CONFIRM_FUNDS… 依序累積</li></ol></div>
+    <div><h4>操作步驟</h4><ol><li>在「訂單」表點任一列</li><li>頁面自動捲回 Dashboard</li></ol><h4>預期結果</h4><p>Dashboard 顯示 Saga <code>COMPLETED</code>／訂單 <code>FILLED</code>／預留票 <code>CONFIRMED</code>；時間軸換成那筆的步驟。</p>
+      <h4>API／驗收案例</h4><p><code>GET /api/v1/sagas/{sagaId}、GET /api/v1/tcc/reservations/{sagaId}</code></p><p><span class="case">DASH-003</span> <span class="case">TRADE-001</span></p></div>
+  </div>
+  
+</article></section>
+<footer><p>重新產生：先 Gradle <code>bootRun</code>（:8093），再執行 <code>.\docs\run-manual.ps1</code>；之後重新 <code>bootRun</code>（或 <code>processResources</code>）前台「操作手冊」就是新版。劇本在 <code>docs/manual/flows.mjs</code>；畫面元素改名時產生會失敗並留下 <code>shots/_fail-*.png</code>。</p>
+<p>sagaId、available 等數字是本次執行時抓到的值，每次重跑會不同；要回到種子狀態請按「還原種子 100000」或重啟服務（H2 記憶體庫）。</p></footer>
+</div></body></html>

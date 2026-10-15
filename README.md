@@ -13,6 +13,7 @@
 | [docs/architecture.md](docs/architecture.md) | 分層與雙庫／Kafka／Outbox 摘要 |
 | [docs/outbox-發件匣.md](docs/outbox-發件匣.md) | **Outbox＝發件匣** 中文敘述與元件對照 |
 | [docs/狀態對照-Saga-TCC-訂單.md](docs/狀態對照-Saga-TCC-訂單.md) | **Saga／預留票／訂單** 三組狀態差異與逐步對照 |
+| [docs/manual/操作手冊.html](docs/manual/操作手冊.html) | **自動截圖操作手冊**：三種結局＋hover／定格／重播／回看；前台導航「操作手冊」按鈕直接開（`.\docs\run-manual.ps1` 重產） |
 | [docs/codeGraphic.html](docs/codeGraphic.html) | Tab 式架構圖：**正向／負向／Case→Hotspot**（非權威） |
 | [docs/swagger.html](docs/swagger.html) | API（Swagger UI） |
 | [docs/testing.md](docs/testing.md) | Case／check／DoD／**Runtime Smoke L0～L1**（含 Dashboard DASH-001～004） |
@@ -51,6 +52,7 @@ IntelliJ：Gradle `bootRun`（**不要**對 `TradingSagaTccApplication` 綠箭�
 | URL | 說明 |
 |-----|------|
 | http://localhost:8093/ | 練習前台＋三方狀態機 Dashboard |
+| http://localhost:8093/manual/操作手冊.html | 操作手冊（前台導航「操作手冊」按鈕；`processResources` 從 `docs/manual` 複製進 jar） |
 | http://localhost:8093/test/runner.html | L1 UI Smoke（RUN TESTING） |
 | http://localhost:8093/swagger-ui.html | OpenAPI |
 | http://localhost:8093/h2-console | H2（先連 order JDBC，再改連 account） |

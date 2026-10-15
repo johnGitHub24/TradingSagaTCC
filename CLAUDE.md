@@ -24,7 +24,8 @@
 - 擴增點：`TccResource`／`CompensationAction`／`OutboxRelay`／`DomainEventConsumer`（雙庫邊界不變）
 - Case：SAGA-001／SAGA-002／TCC-001／TCC-002／TRADE-001／TRADE-002／ACCOUNT-001／OUTBOX-001／DASH-001／DASH-004（單元+整合成對）；DASH-002／003／004 UI 層專屬（Runtime Smoke）
 - 前台 Dashboard：狀態推導純函式 `static/dashboard.js`（規格 `static/test/dashboard.spec.js`，Node `docs/ui-smoke/run-dashboard-unit.mjs`）
-- hover 呼叫鏈：唯一對照表 `static/code-trace.json`；改 Controller／Listener／Service 方法名要同步改（`CodeTraceMapTest`＋整合 DASH-004 會擋）
+- hover 呼叫鏈：唯一對照表 `static/code-trace.json`；改 Controller／Listener／Service 方法名要同步改；入口與每一格的中文說明在同檔 `entries`／`methods`，新增或改名一併改（`CodeTraceMapTest`＋整合 DASH-004 會擋）
+- 操作手冊：`docs/manual/`（劇本 `flows.mjs`＋執行器 `build-manual.mjs`；bootRun 後 `.\docs\run-manual.ps1` 重產）；`processResources` 複製到 `/manual/`，前台導航「操作手冊」按鈕直接開；改前台 DOM 要重跑
 - 架構：`docs/architecture.md`；DB：`docs/資料庫設計.md`；測試：`docs/testing.md`
 - API：[API規格書.md](API規格書.md)
 

@@ -219,9 +219,10 @@ const FIRST_LAYER = { HTTP: 'Controller', KAFKA: 'Listener', SCHEDULED: 'Schedul
  * TradeSagaIntegrationTest（HandlerMapping／@KafkaListener／@Scheduled）把關，三段合起來才不會漂移。
  * @param {object} m dashboard.js 模組
  * @param {object} traces code-trace.json 的 traces 物件
+ * @param {{entries?:object, methods?:object}} [glossary] code-trace.json 的入口／方法中文字典
  * @returns {Array<{id:string, name:string, fn:Function}>}
  */
-export function traceSpecs(m, traces) {
+export function traceSpecs(m, traces, glossary = {}) {
     return [
         {
             name: 'code-trace.json 涵蓋前台全部 trace key，且沒有多餘的 key',
@@ -299,6 +300,35 @@ export function traceSpecs(m, traces) {
                 eq(m.buildTrace(traces, 'nope'), null, '查無 key');
                 eq(m.buildTrace(null, 'saga:COMPLETED'), null, '對照表未載入');
             }
+        },
+        {
+            name: '中文字典：用到的入口／類別#方法都有說明，且沒有孤兒',
+            fn: () => {
+                const usedEntries = new Set();
+                const usedMethods = new Set();
+                for (const t of Object.values(traces)) {
+                    const k = m.entryKey(t.entry || { kind: 'NONE' });
+                    if (k) usedEntries.add(k);
+                    (t.chain || []).forEach((r) => usedMethods.add(r));
+                }
+                const entries = glossary.entries || {};
+                const methods = glossary.methods || {};
+                usedEntries.forEach((k) => ok(entries[k], 'entries 缺：' + k));
+                usedMethods.forEach((r) => ok(methods[r], 'methods 缺：' + r));
+                Object.keys(entries).forEach((k) => ok(usedEntries.has(k), 'entries 多出沒用到的：' + k));
+                Object.keys(methods).forEach((r) => ok(usedMethods.has(r), 'methods 多出沒用到的：' + r));
+            }
+        },
+        {
+            name: 'buildTrace 帶字典：入口與每格都有中文；排程入口用 every 組 key',
+            fn: () => {
+                const t = m.buildTrace(traces, 'msg:RESERVE_FUNDS', glossary);
+                eq(m.entryKey(traces['msg:RESERVE_FUNDS'].entry), 'SCHEDULED trading.outbox.poll-ms', '排程 key');
+                eq(t.entryZh, glossary.entries['SCHEDULED trading.outbox.poll-ms'], '排程入口中文');
+                t.steps.forEach((s) => ok(s.zh, s.ref + ' 缺中文'));
+                eq(m.buildTrace(traces, 'saga:FAILED', glossary).entryZh, '', 'NONE 無入口中文');
+                eq(m.buildTrace(traces, 'msg:RESERVE_FUNDS').steps[0].zh, '', '未帶字典 → 空字串');
+            }
         }
     ].map((s) => ({ id: 'DASH-004', ...s }));
 }
@@ -307,12 +337,13 @@ export function traceSpecs(m, traces) {
  * 【職責】執行全部規格並收集結果（不丟例外，方便兩種執行環境各自輸出）。
  * @param {object} m dashboard.js 模組
  * @param {object} [traces] code-trace.json 的 traces；有給才跑 DASH-004
+ * @param {{entries?:object, methods?:object}} [glossary] code-trace.json 的中文字典
  * @returns {{passed:number, failed:number, results:Array<{id:string, name:string, pass:boolean, error?:string}>}}
  */
-export function runDashboardSpecs(m, traces) {
+export function runDashboardSpecs(m, traces, glossary = {}) {
     const specs = [
         ...dashboardSpecs(m).map((s) => ({ id: 'DASH-001', ...s })),
-        ...(traces ? traceSpecs(m, traces) : [])
+        ...(traces ? traceSpecs(m, traces, glossary) : [])
     ];
     const results = specs.map(({ id, name, fn }) => {
         try {

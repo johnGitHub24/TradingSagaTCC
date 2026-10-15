@@ -71,6 +71,9 @@
 | `docs/run-ui-smoke.ps1` | L1 UI | 是 | `ALL_UI_SMOKE_OK` |
 | `docs/run-smoke-l1.ps1` | L1 編排 | 可選 | API 綠 + `UI automation=PASS\|N/A` |
 | `docs/run-release-gate.ps1` | Release 閘 | 可選 | `check` 綠 + `ALL_RELEASE_GATE_OK`（含 L1） |
+| `docs/run-manual.ps1` | 操作手冊產生 | 是 | `MANUAL_OK 8 steps`（失敗留 `docs/manual/shots/_fail-<id>.png`） |
+
+**操作手冊（不是測試閘門）：** 劇本 `docs/manual/flows.mjs`、執行器 `docs/manual/build-manual.mjs`；真的點三種結局後截圖並寫入 `docs/manual/操作手冊.html`／`.md`。改了前台 DOM（`data-testid`、lane、時間軸）就重跑一次；下一次 `bootRun` 由 `processResources` 把手冊放到 `/manual/`，前台導航「操作手冊」按鈕直接開。
 
 **Release 建議：** `bootRun` → `.\docs\run-release-gate.ps1`（`-SkipSmoke` 僅 check；`-SkipUi` 僅 API L1）。  
 **Graph 路由：** `docs/graph-routing.md`（單 Agent → `EOS-GRAPH=N/A`）。  

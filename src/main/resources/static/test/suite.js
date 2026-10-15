@@ -311,8 +311,8 @@ async function runTests() {
             const { runDashboardSpecs } = await import('/test/dashboard.spec.js');
             const res = await fetch('/code-trace.json');
             if (!res.ok) throw new Error('code-trace.json HTTP ' + res.status);
-            const { traces } = await res.json();
-            const results = runDashboardSpecs(model, traces).results.filter((r) => r.id === 'DASH-004');
+            const { traces, entries, methods } = await res.json();
+            const results = runDashboardSpecs(model, traces, { entries, methods }).results.filter((r) => r.id === 'DASH-004');
             results.filter((r) => !r.pass).forEach((r) => logs.push('FAIL ' + r.name + ' — ' + r.error));
             const failed = results.filter((r) => !r.pass).length;
             logs.push(`${results.length - failed} passed, ${failed} failed`);

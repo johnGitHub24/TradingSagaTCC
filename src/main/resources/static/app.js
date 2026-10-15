@@ -79,8 +79,9 @@ createApp({
 
         const activeSection = ref('dashboard');
 
-        /** DASH-004 呼叫鏈：traces＝code-trace.json；tip＝目前顯示的 tooltip（null 為隱藏）。 */
+        /** DASH-004 呼叫鏈：traces＝code-trace.json；glossary＝入口／方法中文字典；tip＝目前顯示的 tooltip（null 為隱藏）。 */
         const traces = ref(null);
+        const glossary = ref({});
         const showTrace = ref(true);
         const tip = ref(null);
         let hideTimer = null;
@@ -409,10 +410,11 @@ createApp({
 
         /**
          * 【職責】把 tooltip 定位在目標元素下方；下方空間不足時改放上方。
+         * 【技巧】maxH＝所在那一側剩下的視窗高度，內容超過就在 tooltip 內出捲軸，不會超出視窗看不到。
          * @param {Element} el 帶 data-trace 的元素
          */
         const showTipFor = (el) => {
-            const trace = buildTrace(traces.value, el.dataset.trace);
+            const trace = buildTrace(traces.value, el.dataset.trace, glossary.value);
             if (!trace) return;
             clearTimeout(hideTimer);
             const r = el.getBoundingClientRect();
@@ -422,7 +424,8 @@ createApp({
                 trace,
                 above,
                 x: Math.max(8, Math.min(r.left, window.innerWidth - width - 8)),
-                y: above ? r.top - 6 : r.bottom + 6
+                y: above ? r.top - 6 : r.bottom + 6,
+                maxH: Math.max(120, above ? r.top - 14 : window.innerHeight - r.bottom - 14)
             };
         };
 
@@ -451,7 +454,11 @@ createApp({
         const loadTraces = async () => {
             try {
                 const res = await fetch('/code-trace.json');
-                if (res.ok) traces.value = (await res.json()).traces;
+                if (res.ok) {
+                    const json = await res.json();
+                    traces.value = json.traces;
+                    glossary.value = { entries: json.entries, methods: json.methods };
+                }
             } catch {
                 traces.value = null;
             }
